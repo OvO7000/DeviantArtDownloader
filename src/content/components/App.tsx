@@ -1,122 +1,50 @@
 import React, {FC, useEffect, useReducer} from 'react'
-import _ from 'lodash'
+import classnames from 'classnames'
 import MessageSender = chrome.runtime.MessageSender
-import {getPageType, mapLimit, getDownloadLink} from '../../utils'
-import {getFolders, getDeviations, Deviation, Folder, FolderType} from '../../apis'
+import {getPageType, mapLimit, getDownloadLink, sendMessagePromise} from '../../common/js/utils'
+import {getFolders, getDeviations} from '../../common/js/apis'
+import {panelReducer, PanelState} from "../reducers/panelReducer";
+import {dataReducer} from "../reducers/dataReducer";
 
-interface State {
-    username: string,
-    _folders: Folder[],
-    selected: {
-        galleries: string[],
-        favourites: string[],
-    },
-    folders: Folder[],
-    deviations: {
-        name: string;
-        type: FolderType;
-        folderId: number;
-        deviations: Deviation[];
-    }[],
-    show: boolean,
-    status: number,
-    statusText: string,
-    current: string,
-    group: {
-        title: string,
-        current: number,
-        total: number
-    },
-    subGroup: {
-        title: string,
-        current: number,
-        total: number
-    }
-}
+import Progress from './Progress'
 
-export interface Action {
-    data: {
-        [propName: string]: any;
-    };
-    type: 'init' | 'setSelected' | 'setDeviation' | 'setStatus'
-}
-
-const initialState = {
+const initialDataState = {
     username: '',
+    // 所有的 folder
     _folders: [],
+    // 选中的 folder
+    folders: [],
     selected: {
         galleries: [],
         favourites: [],
     },
-    deviations: [],
     // 通过 api 获取的 deviations 列表
-    folders: [],
-
-    show: false,
-    // 0 未初始化
-    // 1 初始化完成
-    // 2 抓取中 crawling
-    // 3 抓取完成
-    // 4 下载中 download
-    // 5 下载完成 finished
-    status: 0,
-    statusText: '',
+    deviations: [],
+}
+const initialPanelState: PanelState = {
+    show: true,
+    download: false,
+    status: 'crawling',
     current: '',
+    progress: 0,
     group: {
-        title: '',
+        title: 'gallery',
         current: 0,
         total: 0
     },
     subGroup: {
-        title: '',
+        title: 'favourite',
         current: 0,
         total: 0
     }
 }
 
-const reducer = (state: State, action: Action) => {
-    if (action.type === 'init') {
-        const _state = _.cloneDeep(state)
-        _state.username = action.data.username
-        _state._folders = action.data.galleries.concat(action.data.favourites)
-        return _state
-    }
-    else if (action.type === 'setSelected') {
-        const _state = _.cloneDeep(state)
-        _state.selected.galleries = action.data.galleries
-        _state.selected.favourites = action.data.favourites
-        _state.folders = action.data.folders
-        return _state
-    }
-    else if (action.type === 'setDeviation') {
-        const _state = _.cloneDeep(state)
-        _state.deviations.push({
-            name: action.data.name,
-            type: action.data.type,
-            folderId: action.data.folderId,
-            deviations: action.data.deviations,
-        })
-        return _state
-    }
-    else if (action.type === 'setStatus') {
-        const status = action.data.status
-        const _state = _.cloneDeep(state)
-
-        _state.status = status
-        if (status === 2) _state.statusText = 'crawling'
-        else if (status === 4) _state.statusText = 'downloading'
-        else if (status === 5) _state.statusText = 'finished'
-        else _state.statusText = ''
-        return _state
-    }
-    return state
-}
-
-
 const Panel: FC = () => {
-    const [state, dispatch] = useReducer(reducer, initialState)
+    const [stateData, dispatchData] = useReducer(dataReducer, initialDataState)
+    const [statePanel, dispatchPanel] = useReducer(panelReducer, initialPanelState)
 
-    const init = ()=>{
+    // 获取页面用户信息
+    const init = () => {
         // 检查页面类型
         const url = window.location.href
         const {pageType, pageInfo} = getPageType(url)
@@ -129,8 +57,8 @@ const Panel: FC = () => {
                         username,
                         galleries: galleries.map((item) => item.name),
                         favourites: favourites.map((item) => item.name)
-                    }, ()=>{
-                        dispatch({
+                    }, () => {
+                        dispatchData({
                             type: 'init',
                             data: {
                                 username,
@@ -138,41 +66,31 @@ const Panel: FC = () => {
                                 favourites
                             }
                         })
-                        dispatch({
-                            type: 'setStatus',
-                            data: {
-                                status: 1
-                            }
-                        })
                     })
-
                 })
-
             })
         }
-        return true
     }
-    useEffect(()=>{
+    useEffect(() => {
+        console.log('init useEffect called')
         init()
     }, [])
 
+    // 监听 popup/background 事件
     const events = (message: any, sender: MessageSender, sendResponse: any) => {
         console.log('events() called')
+        // 抓取、下载作品
         if (message.type === 'download') {
             const {galleries, favourites} = message.data
-            dispatch({
-                type: 'setStatus',
-                data: {
-                    status: 2
-                }
-            })
+
             // 获取选中的 folders
-            const folders = state._folders.filter((item, index)=>{
+            const folders = stateData._folders.filter((item, index) => {
                 if (item.type === 'gallery' && galleries.includes(item.name)) return true
                 else if (item.type === 'collection' && favourites.includes(item.name)) return true
                 else return false
             })
-            dispatch({
+            if (folders.length <= 0) return
+            dispatchData({
                 type: 'setSelected',
                 data: {
                     folders,
@@ -180,13 +98,38 @@ const Panel: FC = () => {
                     favourites
                 }
             })
+            // 设置 Panel
+            dispatchPanel({
+                type: 'setPanel',
+                data: {
+                    status: 'crawling',
+                    group: {
+                        title: 'Galleries',
+                        total: galleries.length
+                    },
+                    subGroup: {
+                        title: 'Favourites',
+                        total: favourites.length
+                    },
+                }
+            })
 
-            // 异步请求并发控制
+            // 抓取作品列表
             const limit = 3
             mapLimit(folders, limit, async (item) => {
+
+                // 设置 panel 的 current
+                dispatchPanel({
+                    type: 'setPanel',
+                    data: {
+                        current: item.name
+                    }
+                })
+
                 // 获取单个 folder 下 deviation
-                const res = await getDeviations(state.username, item.type, item.folderId)
-                dispatch({
+                const res = await getDeviations(stateData.username, item.type, item.folderId)
+
+                dispatchData({
                     type: 'setDeviation',
                     data: {
                         name: item.name,
@@ -195,33 +138,78 @@ const Panel: FC = () => {
                         deviations: res
                     }
                 })
-
-            }).then((res)=>{
-                console.log('finished')
-                dispatch({
-                    type: 'setStatus',
+                const type = item.type === 'gallery'?'group':'subGroup'
+                dispatchPanel({
+                    type: 'addCurrent',
                     data: {
-                        status: 3
+                        target: type,
+                        progress: type
                     }
+                })
+
+            }).then((res) => {
+                console.log('crawl finished')
+                dispatchPanel({
+                    type: 'setDownload'
                 })
             })
         }
     }
+    useEffect(() => {
+        console.log('event useEffect called')
+
+        chrome.runtime.onMessage.addListener(events)
+        return () => {
+            chrome.runtime.onMessage.removeListener(events)
+        }
+
+    }, [stateData])
+
+    // 下载图片
     const download = async () => {
-        dispatch({
-            type: 'setStatus',
+        // 设置 panel
+        dispatchPanel({
+            type: 'setPanel',
             data: {
-                status: 4
+                status: 'downloading',
+                current: '',
+                progress: 0,
+                group: {
+                    title: '',
+                    current: 0,
+                    total: 0
+                },
+                subGroup: {
+                    title: 'Folders',
+                    current: 0,
+                    total: stateData.folders.length
+                }
             }
         })
-        console.log('download called')
-        const limit = 3
-        const username = state.username
-        await mapLimit(state.deviations, limit, async(folder)=>{
-            const { deviations, name, folderId, type } = folder
-            await mapLimit(deviations, limit, async (deviation) => {
+        // 下载 folders
+        const username = stateData.username
+        await mapLimit(stateData.deviations, 1, async (folder) => {
+            const {deviations, name, folderId, type} = folder
+            // 设置 group
+            dispatchPanel({
+                type: 'setPanel',
+                data: {
+                    group: {
+                        title: name,
+                        total: deviations.length
+                    }
+                }
+            })
+            await mapLimit(deviations, 3, async (deviation) => {
+                // 设置 current
+                dispatchPanel({
+                    type: 'setPanel',
+                    data: {
+                        current: deviation.title
+                    }
+                })
                 const link = await getDownloadLink(deviation)
-                chrome.runtime.sendMessage({
+                await sendMessagePromise({
                     type: 'download',
                     link,
                     username,
@@ -231,24 +219,70 @@ const Panel: FC = () => {
                         type
                     },
                     deviation
+                }).then(() => {
+                    dispatchPanel({
+                        type: 'addCurrent',
+                        data: {
+                            target: 'group',
+                            progress: 'group'
+                        }
+                    })
                 })
+            })
+            // 清空 group
+            dispatchPanel({
+                type: 'setPanel',
+                data: {
+                    current: '',
+                    progress: 0,
+                    group: {
+                        title: '',
+                        current: 0,
+                        total: 0
+                    }
+                },
+            })
+            // subGroup.current + 1
+            dispatchPanel({
+                type: 'addCurrent',
+                data: {
+                    target: 'subGroup'
+                },
             })
         })
     }
     useEffect(() => {
-        console.log('useEffect called')
-        if (state.status === 3) {
-            download().then(() => {})
+        console.log('download useEffect called')
+
+        if (statePanel.download) {
+            console.log('download called')
+            download().then(() => {
+                console.log('download finished')
+            })
         }
-        chrome.runtime.onMessage.addListener(events)
-        return ()=>{
-            chrome.runtime.onMessage.removeListener(events)
-        }
+    }, [statePanel.download])
+
+    const classes = classnames('dad-cs-panel', {
+        show: statePanel.show
     })
 
     return (
-        <div className='dad-panel'>
-            test
+        <div className={classes}>
+            <Progress percent={statePanel.progress}/>
+            <div className='dad-cs-info'>
+                <div className='dad-cs-status'>
+                    <span className='dad-cs-status-l'>{statePanel.status}</span>
+                    <span className='dad-cs-status-r'>{statePanel.current}</span>
+                </div>
+                <div className='dad-cs-group'>
+                    <span className='dad-cs-group-l'>{statePanel.group.title}</span>
+                    <span>{`${statePanel.group.current} / ${statePanel.group.total}`}</span>
+                </div>
+                <div className='dad-cs-subGroup'>
+                    <span>{statePanel.subGroup.title}</span>
+                    <span>{`${statePanel.subGroup.current} / ${statePanel.subGroup.total}`}</span>
+                </div>
+            </div>
         </div>
     )
 }

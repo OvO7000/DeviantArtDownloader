@@ -1,8 +1,39 @@
-#dad-container
-  .dad-app
+@import '../common/style/variables.styl'
+
+$progress-height = 4px
+
+#dad-cs
+  .dad-cs-panel
     position: fixed
     left: 100px
     bottom: 100px
     width: 200px
-    height: 200px
-    background-color: #fff
+    background-color: $grey9
+    box-shadow: 4px 4px 16px 4px $grey11
+
+    // 进度条
+    .dad-cs-progress
+      height: $progress-height
+      background-color: $grey6
+      .dad-cs-progress-inner
+        height: $progress-height
+        background-color: $basic6
+    // 信息
+    .dad-cs-info
+      .dad-cs-status,
+      .dad-cs-group,
+      .dad-cs-subGroup
+        display: flex
+        justify-content: space-between
+        align-items: center
+        padding: 4px 8px
+        color: $grey2
+        body()
+
+      .dad-cs-status-l
+        flex: 0 0 80px
+      .dad-cs-status-r
+        ellipsis()
+      .dad-cs-group-l
+        flex: 0 0 130px
+        ellipsis()

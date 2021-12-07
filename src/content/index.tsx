@@ -6,14 +6,12 @@ import Panel from './components/App'
 // content-script 入口、根组件
 const App: FC = (props) => {
     return (
-        <div className='dad-app'>
-            <Panel/>
-        </div>
+        <Panel/>
     )
 }
 
 const app = document.createElement('div')
-app.id = 'dad-container'
+app.id = 'dad-cs'
 document.body.appendChild(app)
 ReactDOM.render(<App/>, app)
 

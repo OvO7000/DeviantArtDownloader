@@ -1,6 +1,7 @@
-import {getDownloadFileType} from '../utils'
+import {getDownloadFileType, checkFilename} from '../common/js/utils'
 import DownloadOptions = chrome.downloads.DownloadOptions
 
+console.log('bg called')
 chrome.runtime.onInstalled.addListener(() => {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, () => {
         chrome.declarativeContent.onPageChanged.addRules([{
@@ -8,12 +9,14 @@ chrome.runtime.onInstalled.addListener(() => {
             actions: [new chrome.declarativeContent.ShowPageAction()]
         }])
     })
-
-    chrome.runtime.onMessage.addListener((message) => {
+    console.log('bg called2')
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        console.log('bg download called')
         if (message.type === 'download') {
             const {username, deviation, folder, link} = message
-            const fileType = getDownloadFileType(link)
-            const fileName = `deviantArtDownloader/${username}/${folder.name}/${deviation.deviation.title}.${fileType}`
+            const fileType = getDownloadFileType(link) as string
+            const cf = checkFilename
+            const fileName = `deviantArtDownloader/${cf(username)}/${cf(folder.name)}/${cf(deviation.deviation.title)}.${cf(fileType)}`
             console.log(fileName)
             const options:DownloadOptions = {
                 url: link,
@@ -21,9 +24,10 @@ chrome.runtime.onInstalled.addListener(() => {
                 conflictAction: 'uniquify'
             }
             chrome.downloads.download(options, (res) => {
-                // console.log('downloaded')
+                console.log('bg download finished')
+                sendResponse({complete: true})
             })
-
+            return true
         }
     })
     // isDownloadable false

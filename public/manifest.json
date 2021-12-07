@@ -25,5 +25,14 @@
     "js": ["static/js/content.js"],
     "run_at": "document_end"
   }],
-  "permissions": ["storage", "downloads", "declarativeContent"]
+  "permissions": [
+    "storage",
+    "downloads",
+    "declarativeContent"
+  ],
+  "externally_connectable": {
+    "ids": ["efcmplbhldgieddcnknaohfggcfodebk"],
+    "matches": ["https://www.deviantart.com/*"],
+    "accepts_tls_channel_id": false
+  }
 }

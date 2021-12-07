@@ -55,7 +55,8 @@ export const getDownloadLink = async (item: Deviation) => {
         const link = doc.querySelector(selector) as HTMLAnchorElement
         if (!link) return
         return link.href
-    } else {
+    }
+    else {
         const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
         const link = doc.querySelector(selector) as HTMLLinkElement
         if (!link) return
@@ -63,8 +64,54 @@ export const getDownloadLink = async (item: Deviation) => {
     }
 }
 
-export const getDownloadFileType = (link: string)=>{
+export const getDownloadFileType = (link: string) => {
     const url = new URL(link)
-    const { pathname } = url
+    const {pathname} = url
     return pathname.split('.').pop()
+}
+
+interface SendMessageItem {
+    [propName: string]: any;
+}
+
+export const sendMessagePromise = (item: SendMessageItem): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(chrome.runtime.id, item, response => {
+            if (response.complete) {
+                resolve()
+            }
+            else {
+                reject('download failed');
+            }
+        });
+    });
+}
+
+export const checkFilename = (name: string) => {
+    const deviceName = [
+        'CON',
+        'PRN',
+        'AUX',
+        'NUL',
+        'COM1',
+        'COM2',
+        'COM3',
+        'COM4',
+        'COM5',
+        'COM6',
+        'COM7',
+        'COM8',
+        'COM9',
+        'LPT1',
+        'LPT2',
+        'LPT3',
+        'LPT4',
+        'LPT5',
+        'LPT6',
+        'LPT7',
+        'LPT8',
+        'LPT9']
+    let _name = name.trim().replace(/[\\/:*?"<>|]/g, ' ')
+    if (deviceName.includes(_name)) _name = 'auto renamed by deviant art downloader extension'
+    return _name.slice(0, 250)
 }
