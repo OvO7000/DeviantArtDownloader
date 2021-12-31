@@ -2,6 +2,7 @@ import React, {FC, useEffect, useReducer} from 'react'
 import classnames from 'classnames'
 import MessageSender = chrome.runtime.MessageSender
 import {getPageType, mapLimit, getDownloadLink, sendMessagePromise} from '../../common/js/utils'
+import MapLimit from '../../common/js/MapLimit'
 import {getFolders, getDeviations} from '../../common/js/apis'
 import {panelReducer, PanelState} from "../reducers/panelReducer";
 import {dataReducer} from "../reducers/dataReducer";
@@ -39,6 +40,9 @@ const initialPanelState: PanelState = {
     }
 }
 
+let folderMapLimit:MapLimit
+let deviationMapLimit:MapLimit
+
 const Panel: FC = () => {
     const [stateData, dispatchData] = useReducer(dataReducer, initialDataState)
     const [statePanel, dispatchPanel] = useReducer(panelReducer, initialPanelState)
@@ -55,8 +59,8 @@ const Panel: FC = () => {
                 getFolders(username, 'collection').then((favourites) => {
                     chrome.storage.sync.set({
                         username,
-                        galleries: galleries.map((item) => item.name),
-                        favourites: favourites.map((item) => item.name)
+                        galleries: galleries.map((item) => ({name:item.name, count: item.totalItemCount})),
+                        favourites: favourites.map((item) => ({name:item.name, count: item.totalItemCount}))
                     }, () => {
                         dispatchData({
                             type: 'init',
@@ -154,6 +158,18 @@ const Panel: FC = () => {
                 })
             })
         }
+        else if (message.type === 'cancel') {
+            deviationMapLimit && deviationMapLimit.cancel()
+            folderMapLimit && folderMapLimit.cancel()
+        }
+        else if (message.type === 'stop') {
+            deviationMapLimit && deviationMapLimit.stop()
+            folderMapLimit && folderMapLimit.stop()
+        }
+        else if (message.type === 'continue') {
+            deviationMapLimit && deviationMapLimit.continue()
+            folderMapLimit && folderMapLimit.continue()
+        }
     }
     useEffect(() => {
         console.log('event useEffect called')
@@ -188,7 +204,8 @@ const Panel: FC = () => {
         })
         // 下载 folders
         const username = stateData.username
-        await mapLimit(stateData.deviations, 1, async (folder) => {
+        folderMapLimit = new MapLimit(stateData.deviations, 1)
+        await folderMapLimit.execute(async (folder) => {
             const {deviations, name, folderId, type} = folder
             // 设置 group
             dispatchPanel({
@@ -200,7 +217,9 @@ const Panel: FC = () => {
                     }
                 }
             })
-            await mapLimit(deviations, 3, async (deviation) => {
+
+            deviationMapLimit = new MapLimit(deviations, 3)
+            await deviationMapLimit.execute(async (deviation) => {
                 // 设置 current
                 dispatchPanel({
                     type: 'setPanel',

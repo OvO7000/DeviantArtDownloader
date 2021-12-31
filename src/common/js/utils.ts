@@ -87,6 +87,26 @@ export const sendMessagePromise = (item: SendMessageItem): Promise<void> => {
     });
 }
 
+export const sendMessageToTab = (type: string, data?: any) => {
+    chrome.tabs.query({currentWindow: true, active: true}, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+            interface Message {
+                type: string,
+                data?: any
+            }
+            const message: Message = {
+                type
+            }
+
+            if (data !== undefined && data !== null) message.data = data
+            chrome.tabs.sendMessage(
+                tabs[0].id,
+                message
+            )
+        }
+    })
+}
+
 export const checkFilename = (name: string) => {
     const deviceName = [
         'CON',

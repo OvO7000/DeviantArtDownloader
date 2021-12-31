@@ -7,7 +7,8 @@ export interface Folder {
 
     type: FolderType;
     name: string;
-    folderId: null | number
+    folderId: null | number;
+    totalItemCount: number;
 }
 
 export interface Deviation {

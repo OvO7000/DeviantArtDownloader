@@ -1,0 +1,58 @@
+@import '../common/style/variables.styl'
+
+scrollBar()
+
+body
+  padding: 0
+  margin: 0 !important
+  width: 400px
+
+  .header
+    h4
+      padding: 0 8px;
+      //headline()
+
+  .tab-title
+    padding: 0 12px
+  .btns
+    padding: 4px 8px
+  .userinfo
+    .userinfo-header
+      display: flex
+      align-items: center
+      justify-content: space-between
+      padding: 4px 8px
+
+    .userinfo-folders
+      max-height: 232px
+      border-top: 1px solid #d9d9d9
+      border-bottom: 1px solid #d9d9d9
+      overflow-y: scroll
+      padding-left: 4px
+
+      .userinfo-folderGroup
+        width: 100%
+        .ant-checkbox-wrapper
+          flex-grow: 1
+          >span:last-child
+            flex-grow: 1
+        .userinfo-folder
+          width: 100%
+          display: flex
+          justify-content: space-between
+          align-items: center
+          padding: 4px 8px
+          .userinfo-folder-l
+            display: flex
+            align-items: center
+            .userinfo-folder-name
+              display: inline-block
+              max-width: 180px
+              ellipsis()
+            .userinfo-folder-count
+              margin-left: 4px
+              color: $grey7
+
+          .userinfo-folder-type
+            color: $grey7
+

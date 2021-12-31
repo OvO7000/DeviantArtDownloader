@@ -69,3 +69,21 @@ ellipsis()
   overflow: hidden
   text-overflow: ellipsis
   white-space: nowrap
+
+scrollBar()
+  ::-webkit-scrollbar
+    width: 10px
+    height: 10px
+    background-color: #f5f5f5
+
+  /*滚动条的轨道*/
+  ::-webkit-scrollbar-track
+    background-color: #f5f5f5
+
+  /*滚动条的滑块按钮*/
+  ::-webkit-scrollbar-thumb
+    background-color: #d5d5d5
+
+  /*滚动条的上下两端的按钮*/
+  ::-webkit-scrollbar-button
+    display: none

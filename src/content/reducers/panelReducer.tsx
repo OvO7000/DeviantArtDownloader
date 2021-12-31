@@ -69,27 +69,28 @@ export const panelReducer = (state: PanelState, action: PanelAction) => {
     else if (action.type === 'setPanel') {
         const _state = _.cloneDeep(state)
         const {status, current, progress, group, subGroup} = action.data
+        console.log('setPanel called', progress)
         status && (_state.status = status)
         current && (_state.current = current)
-        progress && (_state.progress = progress)
+        if (progress !== undefined) _state.progress = progress
         if (group) {
             const {title, current, total} = group
             title && (_state.group.title = title)
-            current && (_state.group.current = current)
-            total && (_state.group.total = total)
+            if (current !== undefined) _state.group.current = current
+            if (total !== undefined) _state.group.total = total
         }
         if (subGroup) {
             const {title, current, total} = subGroup
             title && (_state.subGroup.title = title)
-            current && (_state.subGroup.current = current)
-            total && (_state.subGroup.total = total)
+            if (current !== undefined) _state.subGroup.current = current
+            if (total !== undefined) _state.subGroup.total = total
         }
         return _state
     }
     else if (action.type === 'addCurrent') {
         const _state = _.cloneDeep(state)
         const {target, progress} = action.data
-
+        console.log('addCurrent called')
         // current + 1
         if (_state[target].current >= _state[target].total) {
             _state[target].current = _state[target].total

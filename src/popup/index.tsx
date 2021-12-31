@@ -1,8 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import Popup from './pages/home';
+import Popup from './components/Home';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/es/locale/zh_CN';
+import './popup.styl'
 
 const antdConfig = {
     locale: zhCN
