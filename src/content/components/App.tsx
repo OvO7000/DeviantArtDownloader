@@ -1,7 +1,7 @@
 import React, {FC, useEffect, useReducer} from 'react'
 import classnames from 'classnames'
 import MessageSender = chrome.runtime.MessageSender
-import {getPageType, mapLimit, getDownloadLink, sendMessagePromise} from '../../common/js/utils'
+import { _chrome, getPageType, mapLimit, getDownloadLink, sendMessagePromise} from '../../common/js/utils'
 import MapLimit from '../../common/js/MapLimit'
 import {getFolders, getDeviations} from '../../common/js/apis'
 import {panelReducer, PanelState} from "../reducers/panelReducer";
@@ -21,6 +21,9 @@ const initialDataState = {
     },
     // 通过 api 获取的 deviations 列表
     deviations: [],
+    settings: {
+        downloadDownloadable: false
+    }
 }
 const initialPanelState: PanelState = {
     show: true,
@@ -37,11 +40,17 @@ const initialPanelState: PanelState = {
         title: 'favourite',
         current: 0,
         total: 0
-    }
+    },
 }
 
 let folderMapLimit:MapLimit
 let deviationMapLimit:MapLimit
+
+interface data {
+    settings: {
+        downloadDownloadable: boolean
+    }
+}
 
 const Panel: FC = () => {
     const [stateData, dispatchData] = useReducer(dataReducer, initialDataState)
@@ -152,9 +161,14 @@ const Panel: FC = () => {
                 })
 
             }).then((res) => {
-                console.log('crawl finished')
-                dispatchPanel({
-                    type: 'setDownload'
+                chrome.storage.sync.get(['settings'], ({settings})=>{
+                    dispatchData({
+                        type: 'setSettings',
+                        data: settings
+                    })
+                    dispatchPanel({
+                        type: 'setDownload'
+                    })
                 })
             })
         }
@@ -203,7 +217,7 @@ const Panel: FC = () => {
             }
         })
         // 下载 folders
-        const username = stateData.username
+        const { username, settings } = stateData
         folderMapLimit = new MapLimit(stateData.deviations, 1)
         await folderMapLimit.execute(async (folder) => {
             const {deviations, name, folderId, type} = folder
@@ -220,6 +234,7 @@ const Panel: FC = () => {
 
             deviationMapLimit = new MapLimit(deviations, 3)
             await deviationMapLimit.execute(async (deviation) => {
+
                 // 设置 current
                 dispatchPanel({
                     type: 'setPanel',
@@ -227,6 +242,8 @@ const Panel: FC = () => {
                         current: deviation.title
                     }
                 })
+                // 没有下载按钮的 deviation 不下载
+                if (settings.downloadDownloadable && !deviation.deviation.isDownloadable) return
                 const link = await getDownloadLink(deviation)
                 await sendMessagePromise({
                     type: 'download',

@@ -135,3 +135,51 @@ export const checkFilename = (name: string) => {
     if (deviceName.includes(_name)) _name = 'auto renamed by deviant art downloader extension'
     return _name.slice(0, 250)
 }
+
+export const _chrome = {
+    sendMessage: (item: SendMessageItem): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage(chrome.runtime.id, item, response => {
+                if (response.complete) {
+                    resolve()
+                }
+                else {
+                    reject('download failed');
+                }
+            });
+        });
+    },
+    sendMessageToTab: (type: string, data?: any): Promise<void> => {
+        return new Promise((resolve, reject)=>{
+            chrome.tabs.query({currentWindow: true, active: true}, (tabs) => {
+                if (tabs && tabs[0] && tabs[0].id) {
+                    interface Message {
+                        type: string,
+                        data?: any
+                    }
+                    const message: Message = {
+                        type
+                    }
+
+                    if (data !== undefined && data !== null) message.data = data
+                    chrome.tabs.sendMessage(
+                        tabs[0].id,
+                        message
+                    )
+                    resolve()
+                }
+                else {
+                    reject()
+                }
+            })
+        })
+
+    },
+    getStorage: (list: string[]): Promise<any> => {
+        return new Promise((resolve, reject)=>{
+            chrome.storage.sync.get(list, (data)=>{
+                resolve(data)
+            })
+        })
+    }
+}

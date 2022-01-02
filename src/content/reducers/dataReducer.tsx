@@ -15,6 +15,9 @@ export interface DataState {
         folderId: number;
         deviations: Deviation[];
     }[],
+    settings: {
+        downloadDownloadable: boolean
+    }
 }
 
 export type DataAction = {
@@ -41,6 +44,12 @@ export type DataAction = {
             deviations: Deviation[]
         };
         type: 'setDeviation'
+    } |
+    {
+        data: {
+            downloadDownloadable: boolean;
+        };
+        type: 'setSettings'
     }
 
 export const dataReducer = (state: DataState, action: DataAction) => {
@@ -71,6 +80,14 @@ export const dataReducer = (state: DataState, action: DataAction) => {
             folderId,
             deviations
         })
+        return _state
+    }
+    // 设置 settings
+    else if (action.type === 'setSettings') {
+        const _state = _.cloneDeep(state)
+
+        const {downloadDownloadable} = action.data
+        _state.settings.downloadDownloadable = downloadDownloadable
         return _state
     }
     return state

@@ -1,5 +1,11 @@
-import {getDownloadFileType, checkFilename} from '../common/js/utils'
+import { _chrome, getDownloadFileType, checkFilename} from '../common/js/utils'
 import DownloadOptions = chrome.downloads.DownloadOptions
+
+interface data {
+    settings: {
+        downloadDownloadable: boolean
+    }
+}
 
 console.log('bg called')
 chrome.runtime.onInstalled.addListener(() => {
@@ -10,12 +16,14 @@ chrome.runtime.onInstalled.addListener(() => {
         }])
     })
     console.log('bg called2')
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         console.log('bg download called')
         if (message.type === 'download') {
             const {username, deviation, folder, link} = message
             const fileType = getDownloadFileType(link) as string
             const cf = checkFilename
+            const {settings} = await _chrome.getStorage(['settings']) as data
+
             const fileName = `deviantArtDownloader/${cf(username)}/${cf(folder.name)}/${cf(deviation.deviation.title)}.${cf(fileType)}`
             console.log(fileName)
             const options:DownloadOptions = {

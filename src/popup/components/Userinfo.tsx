@@ -1,9 +1,9 @@
 import React, {FC, useState} from 'react';
-import {Collapse, Checkbox, Space, Button, Row} from 'antd'
-import {Action, ActionDataType} from './Download'
+import {Checkbox, Space, Button, Row, Tabs} from 'antd'
+import {Action, ActionDataType} from './Home'
 import {CheckboxValueType} from 'antd/lib/checkbox/Group';
 
-const {Panel} = Collapse
+const {TabPane} = Tabs
 
 export interface Props {
     requested: boolean;
@@ -27,7 +27,6 @@ const Userinfo: FC<Props> = (props) => {
     const getCheckboxGroup = (type: ActionDataType) => {
         const value = type === 'galleries' ? selectedGalleries : selectedFavourites
         const list = type === 'galleries' ? galleries : favourites
-        const folderType = type === 'galleries' ? 'gallery' : 'favourite'
         return (
             <Checkbox.Group
                 className='userinfo-folderGroup'
@@ -49,14 +48,11 @@ const Userinfo: FC<Props> = (props) => {
                             <Row>
                                 <Checkbox value={item.name}>
                                     <span className='userinfo-folder'>
-                                        <span className='userinfo-folder-l'>
-                                            <span className='userinfo-folder-name'>{item.name}</span>
-                                            <span className='userinfo-folder-count'>{item.count} deviations</span></span>
-                                        <span className='userinfo-folder-type'>{folderType}</span>
+                                        <span className='userinfo-folder-name'>{item.name}</span>
+                                        <span className='userinfo-folder-count'>{item.count} deviations</span>
                                     </span>
                                 </Checkbox>
                             </Row>
-
                         )
                     })
                 }
@@ -83,35 +79,50 @@ const Userinfo: FC<Props> = (props) => {
             set(comparedList.map(item => item.name))
         }
     }
+
+    const buttons = (
+        <>
+            <Button
+                className='userinfo-btn_selectAllGalleries'
+                size='small'
+                onClick={() => {
+                    selectAll('galleries')
+                }}
+            >all galleries</Button>
+            <Button
+                className='userinfo-btn_selectAllFavourites'
+                size='small'
+                onClick={() => {
+                    selectAll('favourites')
+                }}
+            >all favourites</Button>
+        </>
+    )
     return (
         <div className='userinfo'>
             {
                 requested && (
-                    <>
-                        <div className='userinfo-header'>
-                            <span className='userinfo-name'>{username}</span>
-                            <Space>
-                                <Button
-                                    className='userinfo-btn_selectAllGalleries'
-                                    size='small'
-                                    onClick={() => {
-                                        selectAll('galleries')
-                                    }}
-                                >all galleries</Button>
-                                <Button
-                                    className='userinfo-btn_selectAllFavourites'
-                                    size='small'
-                                    onClick={() => {
-                                        selectAll('favourites')
-                                    }}
-                                >all favourites</Button>
-                            </Space>
-                        </div>
-                        <div className='userinfo-folders'>
+                    <Tabs tabBarExtraContent={buttons}>
+                        <TabPane key='galleries' tab={
+                            <span className='tab-title'>Gallery</span>
+                        }>
                             {getCheckboxGroup('galleries')}
+                        </TabPane>
+                        <TabPane key='favourites' tab={
+                            <span className='tab-title'>Favourites</span>
+                        }>
                             {getCheckboxGroup('favourites')}
-                        </div>
-                    </>
+                        </TabPane>
+                    </Tabs>
+                    // <>
+                    //     <div className='userinfo-header'>
+                    //         <span className='userinfo-name'>{username}</span>
+                    //     </div>
+                    //     <div className='userinfo-folders'>
+                    //
+                    //         {getCheckboxGroup('favourites')}
+                    //     </div>
+                    // </>
                 )
             }
         </div>
