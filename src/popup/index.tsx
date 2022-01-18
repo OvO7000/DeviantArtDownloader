@@ -15,3 +15,9 @@ ReactDOM.render(
   </React.StrictMode>,
   document.getElementById('root')
 )
+// 捕获 popover 导致的 ResizeObserver loop limit exceeded
+window.onerror = function(e) {
+    if(e.toString() === 'ResizeObserver loop limit exceeded') {
+        return true
+    }
+}

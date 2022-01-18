@@ -21,7 +21,10 @@ export interface PanelState {
 }
 
 export type PanelAction = {
-    type: 'setDownload'
+    type: 'setDownload',
+    data: {
+        download: boolean
+    }
 } |
     {
         type: 'setShow',
@@ -58,7 +61,7 @@ export type PanelAction = {
 export const panelReducer = (state: PanelState, action: PanelAction) => {
     if (action.type === 'setDownload') {
         const _state = _.cloneDeep(state)
-        _state.download = true
+        _state.download = action.data.download
         return _state
     }
     else if (action.type === 'setShow') {
@@ -69,7 +72,6 @@ export const panelReducer = (state: PanelState, action: PanelAction) => {
     else if (action.type === 'setPanel') {
         const _state = _.cloneDeep(state)
         const {status, current, progress, group, subGroup} = action.data
-        console.log('setPanel called', progress)
         status && (_state.status = status)
         current && (_state.current = current)
         if (progress !== undefined) _state.progress = progress
@@ -90,7 +92,6 @@ export const panelReducer = (state: PanelState, action: PanelAction) => {
     else if (action.type === 'addCurrent') {
         const _state = _.cloneDeep(state)
         const {target, progress} = action.data
-        console.log('addCurrent called')
         // current + 1
         if (_state[target].current >= _state[target].total) {
             _state[target].current = _state[target].total

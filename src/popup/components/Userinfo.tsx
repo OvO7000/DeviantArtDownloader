@@ -1,6 +1,6 @@
 import React, {FC, useState} from 'react';
 import {Checkbox, Space, Button, Row, Tabs} from 'antd'
-import {Action, ActionDataType} from './Home'
+import {UserInfoAction, ActionDataType} from '../reducers/userInfoReducer'
 import {CheckboxValueType} from 'antd/lib/checkbox/Group';
 
 const {TabPane} = Tabs
@@ -18,11 +18,18 @@ export interface Props {
     }[],
     selectedGalleries: string[],
     selectedFavourites: string[],
-    dispatch: (action: Action) => void
+    dispatch: (action: UserInfoAction) => void
 }
 
 const Userinfo: FC<Props> = (props) => {
-    const {requested = false, username = '', galleries, favourites, selectedGalleries, selectedFavourites, dispatch} = props
+    const {
+        requested = false,
+        galleries,
+        favourites,
+        selectedGalleries,
+        selectedFavourites,
+        dispatch
+    } = props
 
     const getCheckboxGroup = (type: ActionDataType) => {
         const value = type === 'galleries' ? selectedGalleries : selectedFavourites
@@ -32,7 +39,6 @@ const Userinfo: FC<Props> = (props) => {
                 className='userinfo-folderGroup'
                 value={value}
                 onChange={(checkedValues: CheckboxValueType[]) => {
-                    console.log('checkedValues', checkedValues)
                     dispatch({
                         type: 'select',
                         data: {

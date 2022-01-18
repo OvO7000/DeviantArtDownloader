@@ -77,11 +77,12 @@ interface SendMessageItem {
 export const sendMessagePromise = (item: SendMessageItem): Promise<void> => {
     return new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(chrome.runtime.id, item, response => {
+            console.log('response', response)
             if (response.complete) {
                 resolve()
             }
             else {
-                reject('download failed');
+                reject('download failed')
             }
         });
     });
@@ -94,6 +95,7 @@ export const sendMessageToTab = (type: string, data?: any) => {
                 type: string,
                 data?: any
             }
+
             const message: Message = {
                 type
             }
@@ -107,7 +109,7 @@ export const sendMessageToTab = (type: string, data?: any) => {
     })
 }
 
-export const checkFilename = (name: string) => {
+const checkFilename = (name: string) => {
     const deviceName = [
         'CON',
         'PRN',
@@ -137,7 +139,7 @@ export const checkFilename = (name: string) => {
 }
 
 export const _chrome = {
-    sendMessage: (item: SendMessageItem): Promise<void> => {
+    sendMessageP: (item: SendMessageItem): Promise<void> => {
         return new Promise((resolve, reject) => {
             chrome.runtime.sendMessage(chrome.runtime.id, item, response => {
                 if (response.complete) {
@@ -149,14 +151,18 @@ export const _chrome = {
             });
         });
     },
-    sendMessageToTab: (type: string, data?: any): Promise<void> => {
-        return new Promise((resolve, reject)=>{
+    sendMessage: (item: SendMessageItem) => {
+        chrome.runtime.sendMessage(chrome.runtime.id, item)
+    },
+    sendMessageToTabP: (type: string, data?: any): Promise<void> => {
+        return new Promise((resolve, reject) => {
             chrome.tabs.query({currentWindow: true, active: true}, (tabs) => {
                 if (tabs && tabs[0] && tabs[0].id) {
                     interface Message {
                         type: string,
                         data?: any
                     }
+
                     const message: Message = {
                         type
                     }
@@ -173,13 +179,95 @@ export const _chrome = {
                 }
             })
         })
-
     },
-    getStorage: (list: string[]): Promise<any> => {
-        return new Promise((resolve, reject)=>{
-            chrome.storage.sync.get(list, (data)=>{
+    getTabInfoP: (): Promise<chrome.tabs.Tab> => {
+        return new Promise((resolve, reject) => {
+            chrome.tabs.query({currentWindow: true, active: true}, (tabs) => {
+                if (tabs && tabs[0] && tabs[0].id) {
+                    resolve(tabs[0])
+                }
+                else {
+                    reject()
+                }
+            })
+        })
+    },
+    getStorageP: (list: string[]): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            chrome.storage.sync.get(list, (data) => {
                 resolve(data)
             })
         })
     }
+}
+
+export const validate = {
+    filename: {
+        isEmpty: (filename: string) =>{
+            return !filename.trim().length
+        },
+        deviceName: (filename: string)=>{
+            const deviceName = [
+                'CON',
+                'PRN',
+                'AUX',
+                'NUL',
+                'COM1',
+                'COM2',
+                'COM3',
+                'COM4',
+                'COM5',
+                'COM6',
+                'COM7',
+                'COM8',
+                'COM9',
+                'LPT1',
+                'LPT2',
+                'LPT3',
+                'LPT4',
+                'LPT5',
+                'LPT6',
+                'LPT7',
+                'LPT8',
+                'LPT9']
+            console.log('folder', filename.trim().toUpperCase())
+            return deviceName.includes(filename.trim().toUpperCase())
+        },
+        char: (filename: string)=>{
+            const reg = /[\\/:*?"<>|]/g
+            return reg.test(filename.trim())
+        },
+        length: (filename: string)=>{
+            return filename.trim().length > 250
+        },
+    }
+}
+
+export const date = {
+    format: function (date: Date, formatStr: string) {
+        var str = formatStr;
+        var Week = ['日', '一', '二', '三', '四', '五', '六']
+
+        str = str.replace(/yyyy|YYYY/, date.getFullYear().toString())
+        str = str.replace(/yy|YY/, (date.getFullYear() % 100) > 9 ? (date.getFullYear() % 100).toString() : '0' + (date.getFullYear() % 100))
+        str = str.replace(/MM/, date.getMonth() > 8 ? (date.getMonth() + 1).toString() : '0' + (date.getMonth() + 1))
+        str = str.replace(/M/g, date.getMonth().toString())
+        str = str.replace(/w|W/g, Week[date.getDay()])
+        str = str.replace(/dd|DD/, date.getDate() > 9 ? date.getDate().toString() : '0' + date.getDate())
+        str = str.replace(/d|D/g, date.getDate().toString())
+        str = str.replace(/hh|HH/, date.getHours() > 9 ? date.getHours().toString() : '0' + date.getHours())
+        str = str.replace(/h|H/g, date.getHours().toString())
+        str = str.replace(/mm/, date.getMinutes() > 9 ? date.getMinutes().toString() : '0' + date.getMinutes())
+        str = str.replace(/m/g, date.getMinutes().toString())
+        str = str.replace(/ss|SS/, date.getSeconds() > 9 ? date.getSeconds().toString() : '0' + date.getSeconds())
+        str = str.replace(/s|S/g, date.getSeconds().toString())
+        return str
+    },
+    isDateFormat: (val: string) => {
+        if (val === '' || val === undefined || val === null) return false
+        const reg = /^(\d{4})(-|\/)(\d{1,2})\2(\d{1,2})$/
+        if (!reg.test(val)) return false
+        const date = new Date(val) as (Date|"Invalid Date")
+        return !(date === null || date === "Invalid Date")
+    },
 }

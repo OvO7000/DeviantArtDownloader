@@ -1,41 +1,28 @@
 import {Deviation, Folder, FolderType} from "../../common/js/apis";
 import _ from "lodash";
+import {SettingsState} from '../../popup/reducers/settingsReducer'
 
 export interface DataState {
     username: string,
-    _folders: Folder[],
-    selected: {
-        galleries: string[],
-        favourites: string[],
-    },
     folders: Folder[],
     deviations: {
-        name: string;
-        type: FolderType;
-        folderId: number;
-        deviations: Deviation[];
+        name: string,
+        type: FolderType,
+        folderId: number,
+        deviations: Deviation[],
     }[],
-    settings: {
-        downloadDownloadable: boolean
-    }
+    settings: SettingsState,
 }
 
 export type DataAction = {
     type: 'init';
     data: {
-        username: string,
-        galleries: Folder[],
-        favourites: Folder[]
+        // favourites: Folder[]
+        // username: string,
+        folders: Folder[],
+        username: string
     };
 } |
-    {
-        type: 'setSelected';
-        data: {
-            folders: Folder[],
-            galleries: string[],
-            favourites: string[]
-        };
-    } |
     {
         data: {
             name: string;
@@ -46,27 +33,20 @@ export type DataAction = {
         type: 'setDeviation'
     } |
     {
-        data: {
-            downloadDownloadable: boolean;
-        };
+        data: SettingsState;
         type: 'setSettings'
-    }
+    } |
+    {
+    type: 'clear'
+};
 
 export const dataReducer = (state: DataState, action: DataAction) => {
     if (action.type === 'init') {
         const _state = _.cloneDeep(state)
 
+        // _state.username = action.data.username
         _state.username = action.data.username
-        _state._folders = action.data.galleries.concat(action.data.favourites)
-        return _state
-    }
-    else if (action.type === 'setSelected') {
-        const _state = _.cloneDeep(state)
-
-        const {galleries, favourites, folders} = action.data
-        _state.selected.galleries = galleries
-        _state.selected.favourites = favourites
-        _state.folders = folders
+        _state.folders = action.data.folders
         return _state
     }
     // 添加抓取到的作品列表
@@ -85,9 +65,22 @@ export const dataReducer = (state: DataState, action: DataAction) => {
     // 设置 settings
     else if (action.type === 'setSettings') {
         const _state = _.cloneDeep(state)
-
-        const {downloadDownloadable} = action.data
-        _state.settings.downloadDownloadable = downloadDownloadable
+        _state.settings = action.data
+        return _state
+    }
+    else if (action.type === 'clear') {
+        const _state: DataState = {
+            username: '',
+            folders: [],
+            deviations: [],
+            settings: {
+                downloadDownloadable: false,
+                startTime: '',
+                endTime: '',
+                filename: '',
+                conflictAction: 'uniquify'
+            }
+        }
         return _state
     }
     return state

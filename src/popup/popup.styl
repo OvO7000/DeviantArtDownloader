@@ -57,3 +57,43 @@ body
           color: $grey7
 
 
+  .settings
+    padding: 0 4px
+    .group
+      margin-bottom: 8px
+      .group-inner
+        display: flex
+        justify-content: flex-start
+    .timeRange
+      .timeRange-group
+        flex-grow: 0
+        width: 270px
+      .timeRange-split
+        width: 30px
+        borderLeft: 0
+        borderRight: 0
+        pointerEvents: none
+      .timeRange-input
+        width: 120px
+        textAlign: center
+    .filename
+      .filename-button
+        border-left: none
+        width: 30px
+        border-radius: 0 2px 2px 0
+      .filename-input
+        width: 240px
+        border-radius: 2px 0 0 2px
+    .conflictAction
+      .conflictAction-select
+       display: block
+      .conflictAction-select,
+      .conflictAction-option
+        width: 270px
+    .settings-info
+      margin-left: 8px
+    .hint
+      height: 20px
+      .hint-text
+        color: $danger
+

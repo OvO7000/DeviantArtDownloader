@@ -28,7 +28,8 @@
   "permissions": [
     "storage",
     "downloads",
-    "declarativeContent"
+    "declarativeContent",
+    "tabs"
   ],
   "externally_connectable": {
     "ids": ["efcmplbhldgieddcnknaohfggcfodebk"],

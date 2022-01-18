@@ -1,13 +1,41 @@
-import { _chrome, getDownloadFileType, checkFilename} from '../common/js/utils'
+import {_chrome, getDownloadFileType, date, validate as _v} from '../common/js/utils'
 import DownloadOptions = chrome.downloads.DownloadOptions
+import {ConflictAction} from '../popup/reducers/settingsReducer'
 
-interface data {
+interface Data {
     settings: {
         downloadDownloadable: boolean
     }
 }
 
-console.log('bg called')
+const validate = (dir: string) => {
+    const result = {
+        isValidate: true,
+        text: ''
+    }
+    // 验证 dir 是否为空
+    if (_v.filename.isEmpty(dir)) {
+        result.isValidate = false
+        result.text = "folder or file name can't be empty"
+    }
+    // 验证 是否超长
+    if (_v.filename.length(dir)) {
+        result.isValidate = false
+        result.text = "folder or file name length exceed 250"
+    }
+    // 验证 是否存在非法设备名
+    else if (_v.filename.deviceName(dir)) {
+        result.isValidate = false
+        result.text = "folder or file name has invalid device name"
+    }
+    // 验证 是否存在非法字符
+    else if (_v.filename.char(dir)) {
+        result.isValidate = false
+        result.text = "folder or file can include \\/:*?\"<>|"
+    }
+    return result
+}
+
 chrome.runtime.onInstalled.addListener(() => {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, () => {
         chrome.declarativeContent.onPageChanged.addRules([{
@@ -15,26 +43,55 @@ chrome.runtime.onInstalled.addListener(() => {
             actions: [new chrome.declarativeContent.ShowPageAction()]
         }])
     })
-    console.log('bg called2')
-    chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-        console.log('bg download called')
-        if (message.type === 'download') {
-            const {username, deviation, folder, link} = message
-            const fileType = getDownloadFileType(link) as string
-            const cf = checkFilename
-            const {settings} = await _chrome.getStorage(['settings']) as data
 
-            const fileName = `deviantArtDownloader/${cf(username)}/${cf(folder.name)}/${cf(deviation.deviation.title)}.${cf(fileType)}`
-            console.log(fileName)
-            const options:DownloadOptions = {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.type === 'download') {
+            const {username, deviation, folder, link, settings} = message
+            const fileType = getDownloadFileType(link) as string
+
+            // 检查 conflictAction
+            let conflictAction: ConflictAction
+            if (settings.conflictAction === 'overwrite') conflictAction = 'overwrite'
+            else conflictAction = 'uniquify'
+
+            // 生成 filename
+            const filename = settings.filename || '/deviantArtDownloader/{user}/{folder}/{deviation}'
+            const dirs = filename.split('/')
+            // 处理 / 开头的 filename
+            if (dirs[0] === '') dirs.shift()
+            for (let [index, dir] of dirs.entries()) {
+                // 替换 {user} {folder} {folderType} {deviation} {publishDate} {downloadDate} {downloadBy}
+                let _dir = dir
+                    .replace('{user}', username)
+                    .replace('{folder}', folder.name)
+                    .replace('{folderType}', folder.type)
+                    .replace('{deviation}', deviation.deviation.title)
+                    .replace('{publishDate}', deviation.deviation?.publishedTime.slice(0, 10))
+                    .replace('{downloadDate}', date.format(new Date(), 'yyyy-mm-dd'))
+                    .replace('{downloadBy}', deviation.deviation.isDownloadable ? 'downloadByDownloadLink' : 'downloadByWebImage')
+
+                // 验证 filename
+                const {isValidate, text} = validate(_dir)
+                console.log('isValidate', isValidate, text)
+                // todo: 通知 content 存在异常
+                if (!isValidate) {
+                    sendResponse({complete: true})
+                    return
+                }
+                dirs[index] = _dir
+            }
+
+            const _filename = `${dirs.join('/')}.${fileType}`
+            console.log('filename', _filename)
+            const options: DownloadOptions = {
                 url: link,
-                filename: fileName,
-                conflictAction: 'uniquify'
+                filename: _filename,
+                conflictAction
             }
             chrome.downloads.download(options, (res) => {
-                console.log('bg download finished')
                 sendResponse({complete: true})
             })
+
             return true
         }
     })
