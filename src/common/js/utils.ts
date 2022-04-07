@@ -1,25 +1,37 @@
 import {Deviation, getHTML} from './apis'
-
-type PageType = 'user' | undefined
+// let DownloadOptions = chrome.downloads.DownloadOptions
 
 interface PageInfo {
     username?: string
 }
 
 type Page = {
-    pageType: PageType;
+    pageType: string,
     pageInfo: PageInfo
 }
 
 export const getPageType = (url: string): Page => {
-    let pageType: PageType
+    let pageType: string = 'unknown'
     let pageInfo: PageInfo = {}
-    // todo: 通过url正则判断页面类型
+    // 通过 url 判断页面类型
     const u = new URL(url)
-    // user
     if (u.host === 'www.deviantart.com') {
-        pageType = 'user'
-        pageInfo.username = u.pathname.split('/')[1]
+        if (u.pathname === '/') pageType = 'home'
+        else if (u.pathname.startsWith('/watch/')) pageType = 'watch'
+        else if (u.pathname.startsWith('/daily-deviations/')) pageType = 'daily-deviations'
+        else if (u.pathname.startsWith('/topic/')) pageType = 'topic'
+        else if (u.pathname.startsWith('/popular/')) pageType = 'popular'
+        else if (u.pathname.startsWith('/grouphub/')) pageType = 'grouphub'
+        else if (u.pathname.startsWith('/groups/')) pageType = 'groups'
+        else if (u.pathname.startsWith('/chat/')) pageType = 'chat'
+        else if (u.pathname.startsWith('/shop/')) pageType = 'shop'
+        else if (u.pathname.startsWith('/forum/')) pageType = 'forum'
+        else if (u.pathname.startsWith('/muro/')) pageType = 'muro'
+        else if (u.pathname.startsWith('/posts/')) pageType = 'posts'
+        else {
+            pageType = 'user'
+            pageInfo.username = u.pathname.split('/')[1]
+        }
     }
 
     return {
@@ -59,7 +71,6 @@ export const getDownloadLink = async (item: Deviation) => {
     else {
         const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
         const link = doc.querySelector(selector) as HTMLLinkElement
-        if (!link) return
         return link.href
     }
 }
@@ -74,19 +85,19 @@ interface SendMessageItem {
     [propName: string]: any;
 }
 
-export const sendMessagePromise = (item: SendMessageItem): Promise<void> => {
-    return new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage(chrome.runtime.id, item, response => {
-            console.log('response', response)
-            if (response.complete) {
-                resolve()
-            }
-            else {
-                reject('download failed')
-            }
-        });
-    });
-}
+// export const sendMessagePromise = (item: SendMessageItem): Promise<void> => {
+//     return new Promise((resolve, reject) => {
+//         chrome.runtime.sendMessage(chrome.runtime.id, item, response => {
+//             console.log('response', response)
+//             if (response.complete) {
+//                 resolve()
+//             }
+//             else {
+//                 reject('download failed')
+//             }
+//         });
+//     });
+// }
 
 export const sendMessageToTab = (type: string, data?: any) => {
     chrome.tabs.query({currentWindow: true, active: true}, (tabs) => {
@@ -146,7 +157,7 @@ export const _chrome = {
                     resolve()
                 }
                 else {
-                    reject('download failed');
+                    reject(response.error);
                 }
             });
         });
@@ -198,6 +209,22 @@ export const _chrome = {
                 resolve(data)
             })
         })
+    },
+    download: (options: chrome.downloads.DownloadOptions, cb: Function, times: number = 0) => {
+        // 下载次数 = 重试次数 + 1
+        let _times:number = times + 1
+        const _download = ()=>{
+            chrome.downloads.download(options, (downloadId: number | undefined) => {
+                _times--
+                if (downloadId === undefined && _times > 0) {
+                    _download()
+                }
+                else {
+                    cb(downloadId)
+                }
+            })
+        }
+        _download()
     }
 }
 
@@ -268,6 +295,6 @@ export const date = {
         const reg = /^(\d{4})(-|\/)(\d{1,2})\2(\d{1,2})$/
         if (!reg.test(val)) return false
         const date = new Date(val) as (Date|"Invalid Date")
-        return !(date === null || date === "Invalid Date")
+        return !(date === null || date.toString() === "Invalid Date")
     },
 }

@@ -4,68 +4,100 @@ import {DownOutlined, InfoOutlined} from '@ant-design/icons';
 import {CheckboxChangeEvent} from 'antd/lib/checkbox/Checkbox';
 import {MenuInfo} from "rc-menu/lib/interface";
 
-import {ConflictAction, SettingsAction} from '../reducers/settingsReducer'
+import {ConflictAction, SettingsAction, settingsReducer, SettingsState} from '../reducers/settingsReducer'
+import {date, validate as _v} from "../../common/js/utils";
 
 const {Option} = Select
 
-export interface SettingsProps {
-    downloadDownloadable: boolean,
-    startTime: string,
-    endTime: string,
-    filename: string,
-    conflictAction: ConflictAction,
-    dispatch: (action: SettingsAction) => void,
-    hint: string
+const settingsState: SettingsState = {
+    downloadDownloadable: false,
+    startTime: '',
+    endTime: '',
+    filename: '',
+    conflictAction: 'uniquify',
+    autoRenameIfHasError: false
 }
 
-
-const Settings: FC<SettingsProps> = (props) => {
-    const {
-        downloadDownloadable,
-        startTime,
-        endTime,
-        filename,
-        conflictAction,
-        hint,
+const Settings: FC = () => {
+    const [
+        {
+            downloadDownloadable,
+            startTime,
+            endTime,
+            filename,
+            conflictAction,
+            autoRenameIfHasError
+        },
         dispatch
-    } = props
-
+    ] = useReducer(settingsReducer, settingsState)
+    const [timeRangeHint, setTimeRangeHint] = useState('')
+    const [filenameHint, setFilenameHint] = useState('')
     // 从 storage 获取 settings
     useEffect(() => {
         chrome.storage.sync.get(['settings'],
             ({settings}) => {
+                const timeRangeValidate = validateTimeRange(settings.startTime, settings.endTime)
+                const filenameValidate = validateFilename(settings.filename)
+                const startTime = timeRangeValidate.isValidate ? settings.startTime : ''
+                const endTime = timeRangeValidate.isValidate ? settings.endTime : ''
+                const filename = filenameValidate.isValidate ? settings.filename : ''
                 dispatch({
-                    type: 'init',
-                    settings: {
-                        downloadDownloadable: settings.downloadDownloadable || false,
-                        startTime: settings.startTime || '',
-                        endTime: settings.endTime || '',
-                        filename: settings.filename || '',
-                        conflictAction: settings.conflictAction || 'uniquify'
-                    }
+                    type: 'setSettings',
+                    downloadDownloadable: settings.downloadDownloadable,
+                    startTime,
+                    endTime,
+                    filename,
+                    conflictAction: settings.conflictAction,
+                    autoRenameIfHasError: settings.autoRenameIfHasError,
                 })
             })
+        // 将存在错误的 setting 项置空
+        return () => {
+            // 验证时间范围，设置 hint
+            const timeRangeValidate = validateTimeRange(startTime, endTime)
+            // 验证 filename
+            const filenameValidate = validateFilename(filename)
+            if (!timeRangeValidate.isValidate) {
+                dispatch({
+                    type: 'setSettings',
+                    startTime: '',
+                    endTime: '',
+                })
+            }
+            if (!filenameValidate.isValidate) {
+                dispatch({
+                    type: 'setSettings',
+                    filename: '',
+                })
+            }
+        }
     }, [])
 
+
     // 多选框被点击
-    const handleCheckboxClick = (e: CheckboxChangeEvent) => {
+    const handleDownloadDownloadableCheckboxClick = (e: CheckboxChangeEvent) => {
         dispatch({
             type: 'setSettings',
             downloadDownloadable: e.target.checked
         })
     }
     // 开始时间被修改
-    const handleStartTimeChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleTimeChange = (startTime: string, endTime: string) => {
         dispatch({
             type: 'setSettings',
-            startTime: e.target.value
+            startTime,
+            endTime
         })
+        const validate = validateTimeRange(startTime, endTime)
+        console.log('time validate', validate)
+        if (!validate.isValidate) setTimeRangeHint(validate.text)
+        else setTimeRangeHint('')
     }
-    // 结束时间被修改
-    const handleEndTimeChange = (e: ChangeEvent<HTMLInputElement>) => {
+    // 自动重命名被修改
+    const handleAutoRenameIfHasErrorCheckboxClick = (e: CheckboxChangeEvent)=>{
         dispatch({
             type: 'setSettings',
-            endTime: e.target.value
+            autoRenameIfHasError: e.target.checked
         })
     }
     // conflictAction 下拉框改变
@@ -81,6 +113,9 @@ const Settings: FC<SettingsProps> = (props) => {
             type: 'setSettings',
             filename: e.target.value
         })
+        const validate = validateFilename(filename)
+        if (!validate.isValidate) setFilenameHint(validate.text)
+        else setFilenameHint('')
     }
     // 选择预设的文本
     // filename menu 被点击
@@ -110,7 +145,8 @@ const Settings: FC<SettingsProps> = (props) => {
             content = (
                 <div>
                     <p>1. deviations will be downloaded to the download folder.</p>
-                    <p>2. this string should be split by '/', the last part will be used as filename, and other parts will
+                    <p>2. this string should be split by '/', the last part will be used as filename, and other parts
+                        will
                         be used as folder name.</p>
                     <p>3. deviations without download icon, will be downloaded from the web page, you can
                         use {'\u007b'}downloadBy{'\u007d'} to identify it.</p>
@@ -135,37 +171,102 @@ const Settings: FC<SettingsProps> = (props) => {
         )
 
     }
+
+    const validateTimeRange = (startTime: string, endTime: string) => {
+        const result = {
+            isValidate: true,
+            text: ''
+        }
+        // 验证 startTime 格式
+        if (startTime !== '' && !date.isDateFormat(startTime)) {
+            result.isValidate = false
+            result.text = "start time must be format of 'xxxx-xx-xx'"
+        }
+        // 验证 endTime 格式
+        else if (endTime !== '' && !date.isDateFormat(endTime)) {
+            result.isValidate = false
+            result.text = "end time must be format of 'xxxx-xx-xx'"
+        }
+        // 验证 endTime > startTime
+        else if (startTime !== '' && endTime !== '' && new Date(endTime) < new Date(startTime)) {
+            result.isValidate = false
+            result.text = "end time must be greater than start time"
+        }
+
+        return result
+    }
+    const validateFilename = (filename: string) => {
+        const result = {
+            isValidate: true,
+            text: ''
+        }
+
+        const dirs = filename.split('/')
+        for (let [index, dir] of dirs.entries()) {
+            // 替换 {user} {folder} {folderType} {deviation} {publishDate} {downloadDate} {downloadBy}
+            const _dir = dir.replace(/{user}|{folder}|{folderType}|{deviation}|{publishDate}|{downloadDate}|{downloadBy}/ig, '-')
+            // 验证 dir 是否为空
+            if (_v.filename.isEmpty(_dir) && index !== 0) {
+                result.isValidate = false
+                result.text = "folder or file name can't be empty"
+            }
+            // 验证 是否存在非法设备名
+            else if (_v.filename.deviceName(_dir)) {
+                result.isValidate = false
+                result.text = "folder or file name has invalid device name"
+            }
+            // 验证 是否存在非法字符
+            else if (_v.filename.char(_dir)) {
+                result.isValidate = false
+                result.text = "folder or file can't include \\/:*?\"<>|"
+            }
+        }
+
+        return result
+    }
+
     return (
         <div className='settings'>
-            <div className='group downloadDownloadable'>
+            <div className='settings-group settings-downloadDownloadable'>
                 <Checkbox
                     checked={downloadDownloadable}
-                    onChange={handleCheckboxClick}
+                    onChange={handleDownloadDownloadableCheckboxClick}
                 >
                     only download deviations with download icon
                 </Checkbox>
             </div>
-            <div className='group timeRange'>
+            <div className='settings-group settings-timeRange'>
                 <span>time range</span>
-                <div className='group-inner'>
-                    <Input.Group compact size="small" className='timeRange-group'>
-                        <Input className="timeRange-input" placeholder="start time" value={startTime}
-                               onChange={handleStartTimeChange}/>
-                        <Input className="timeRange-split" placeholder="~" disabled/>
-                        <Input className="timeRange-input" placeholder="end time" value={endTime}
-                               onChange={handleEndTimeChange}/>
+                <div className='settings-group-inner'>
+                    <Input.Group compact size="small" className='settings-timeRange-group'>
+                        <Input className="settings-timeRange-input" placeholder="start time" value={startTime}
+                               onChange={(e) => {
+                                   handleTimeChange(e.target.value, endTime)
+                               }}/>
+                        <Input className="settings-timeRange-split" placeholder="~" disabled/>
+                        <Input className="settings-timeRange-input" placeholder="end time" value={endTime}
+                               onChange={(e) => {
+                                   handleTimeChange(startTime, e.target.value)
+                               }}/>
                     </Input.Group>
                     {getTooltip('timeRange')}
                 </div>
-
+                {
+                    timeRangeHint && (
+                        <div className='settings-hint'>
+                            <span className='settings-hint-text'>{timeRangeHint}</span>
+                        </div>
+                    )
+                }
             </div>
-            <div className='group filename'>
+
+            <div className='settings-group settings-filename'>
                 <span>filename</span>
-                <div className='group-inner'>
+                <div className='settings-group-inner'>
                     <Input
                         value={filename}
                         onChange={handleFilenameChange}
-                        className='filename-input'
+                        className='settings-filename-input'
                         size='small'
                     />
                     <Dropdown overlay={
@@ -179,29 +280,42 @@ const Settings: FC<SettingsProps> = (props) => {
                             <Menu.Item key="downloadBy">downloadBy</Menu.Item>
                         </Menu>
                     }>
-                        <Button size='small' className='filename-button'>
+                        <Button size='small' className='settings-filename-button'>
                             <DownOutlined/>
                         </Button>
                     </Dropdown>
                     {getTooltip('filename')}
                 </div>
-
+                {
+                    filenameHint && (
+                        <div className='settings-hint'>
+                            <span className='settings-hint-text'>{filenameHint}</span>
+                        </div>
+                    )
+                }
             </div>
-            <div className='group conflictAction'>
+            <div className='settings-group settings-conflictAction'>
                 <span>filename conflict action</span>
                 <Select<ConflictAction>
                     value={conflictAction}
                     onChange={handleSelectChange}
-                    className='conflictAction-select'
+                    className='settings-conflictAction-select'
                     size='small'
                 >
-                    <Option value='uniquify' className='conflictAction-option'>rename with a counter</Option>
-                    <Option value='overwrite' className='conflictAction-option'>overwrite the existing file</Option>
+                    <Option value='uniquify' className='settings-conflictAction-option'>rename with a counter</Option>
+                    <Option value='overwrite' className='settings-conflictAction-option'>overwrite the existing
+                        file</Option>
                 </Select>
             </div>
-            <div className='hint'>
-                <span className='hint-text'>{hint}</span>
+            <div className='settings-group settings-autoRenameIfHasError'>
+                <Checkbox
+                    checked={autoRenameIfHasError}
+                    onChange={handleAutoRenameIfHasErrorCheckboxClick}
+                >
+                    auto rename if has error in filename
+                </Checkbox>
             </div>
+
         </div>
     )
 }

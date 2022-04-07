@@ -78,7 +78,8 @@ export const dataReducer = (state: DataState, action: DataAction) => {
                 startTime: '',
                 endTime: '',
                 filename: '',
-                conflictAction: 'uniquify'
+                conflictAction: 'uniquify',
+                autoRenameIfHasError: false
             }
         }
         return _state
