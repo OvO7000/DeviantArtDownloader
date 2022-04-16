@@ -6,14 +6,43 @@ scrollBar()
 
 html
   overflow: overlay
-
+.settings-tooltip,
+.download-chromeSettingHint
+  width: 380px
+.download-chromeSettingHint
+  padding: 0 4px
+  display: flex
+  align-items: center
+  justify-content: flex-start
+  .download-warningIcon
+    display: block
+    color: $danger
+    font-size: 20px
+    margin-right: 8px
 body
   padding: 0
   margin: 0 !important
   width: 400px
-  height: 600px
+  height: 430px
+  .app
+    &::before
+      content: ''
+      display: block
+      position: absolute
+      top: -8px
+      right: -4px
+      width: 320px
+      height: 60px
+      background-image: linear-gradient(transparent, #fff)
+      z-index: -1
+    .app-logo
+      position: absolute
+      top: -8px
+      right: -4px
+      width: 320px
+      z-index: -2
   .hint
-    padding-top: 220px
+    padding-top: 100px
     .hint-icons
       position: relative
       height: 100px
@@ -47,19 +76,22 @@ body
       font-size: 14px
       line-height: 18px
   .home
-    position: relative
-    padding-top: 60px
-    .home-flip
+    //position: relative
+    .home-buttons
       position: absolute
       top: 12px
       right: 12px
-      .anticon
-        color: $grey8
-        font-size: 20px
-        &.home-flip-active
-          color: $primary
+      .home-button
+        background: #fff
+        margin-left: 4px
+        box-shadow: 2px 2px 5px 5px rgba(211,211,211,.5)
+        .anticon
+          color: $grey8
+          font-size: 20px
+          &.home-flip-active
+            color: $primary
     .settings
-      padding: 0 4px
+      padding: 60px 4px 0
 
       .settings-group
         margin-bottom: 8px
@@ -112,6 +144,14 @@ body
 
     .download
       // Userinfo component
+      .download-username
+        height: 60px
+        line-height: 100px
+        padding: 0 8px
+        margin: 0
+        font-size: 24px
+        color: $grey8
+        font-weight : 700
       .userinfo
         .ant-tabs-tab + .ant-tabs-tab
           margin: 0
@@ -127,11 +167,24 @@ body
           margin-right: 8px
 
         .userinfo-folderGroup
-          max-height: 240px
+          height: 270px
           border-bottom: 1px solid #d9d9d9
           overflow-y: scroll
           padding-left: 4px
           width: 100%
+
+        .userinfo-loading
+          height: 322px
+          color: $grey7
+          font-size: 20px
+          display: flex
+          justify-content: center
+          align-items: center
+          background-color: $grey4
+          .userinfo-loading-icon
+            color: $primary
+          span
+            margin-left: 8px
 
         .ant-checkbox-wrapper
           flex-grow: 1
@@ -161,17 +214,7 @@ body
         padding: 4px 4px 4px 12px
         justify-content: space-between
         align-items: center
-        .download-chromeSettingHint
-          padding: 0 4px
-          display: flex
-          align-items: center
-          justify-content: flex-start
 
-          .download-warningIcon
-            display: block
-            color: $danger
-            font-size: 20px
-            margin-right: 8px
 
         .status
           color: $primary

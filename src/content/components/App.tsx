@@ -8,12 +8,13 @@ import {
     getDownloadLink,
     date,
     getDownloadFileType,
-    validate as _v
+    validate as _v,
+    INVALID_DEVICE_NAMES
 } from '../../common/js/utils'
 import {getFolders, getDeviations} from '../../common/js/apis'
 import MapLimit from '../../common/js/MapLimit'
-import {panelReducer, PanelState} from "../reducers/panelReducer";
-import {dataReducer, DataState} from "../reducers/dataReducer";
+import {panelReducer, PanelState} from "../reducers/panelReducer"
+import {dataReducer, DataState, SimpleFolder} from "../reducers/dataReducer"
 
 import Progress from './Progress'
 import {ConflictAction} from "../../popup/reducers/settingsReducer";
@@ -52,8 +53,23 @@ const initialPanelState: PanelState = {
     },
 }
 
-let folderMapLimit: MapLimit
-let deviationMapLimit: MapLimit
+let folderMapLimit: MapLimit<SimpleFolder>
+let deviationMapLimit: MapLimit<Deviation>
+
+type Message = {
+    type: 'download',
+    data: {
+        username: string,
+        galleries: Folder[],
+        favourites: Folder[]
+    }
+} | {
+    type: 'cancel'
+} | {
+    type: 'stop'
+} | {
+    type: 'continue'
+}
 
 const Panel: FC = () => {
     const [stateData, dispatchData] = useReducer(dataReducer, initialDataState)
@@ -61,11 +77,21 @@ const Panel: FC = () => {
 
 
     // 监听 popup/background 事件
-    const events = (message: any, sender: MessageSender, sendResponse: any) => {
+    const events = (message: Message, sender: MessageSender, sendResponse: any) => {
         // 抓取、下载作品
         if (message.type === 'download') {
             const {galleries, favourites, username} = message.data
-            const folders = galleries.concat(favourites)
+            let subFolders: Folder[] = []
+            galleries.forEach(gallery => {
+                if (gallery.subfolders && gallery.subfolders.length) {
+                    const subFolderWithParentName = gallery.subfolders.map(subFolder => ({
+                        ...subFolder,
+                        parentFolderName: gallery.name
+                    }))
+                    subFolders = subFolders.concat(subFolderWithParentName)
+                }
+            })
+            const folders = galleries.concat(favourites, subFolders)
             dispatchData({
                 type: 'init',
                 data: {
@@ -96,7 +122,7 @@ const Panel: FC = () => {
             })
             // 抓取作品列表
             const limit = 3
-            mapLimit(folders, limit, async (item) => {
+            mapLimit(folders, limit, async (item: Folder) => {
 
                 // 设置 panel 的 current
                 dispatchPanel({
@@ -107,17 +133,20 @@ const Panel: FC = () => {
                 })
 
                 // 获取单个 folder 下 deviation
-                const res = await getDeviations(username, item.type, item.folderId)
+                const res = await getDeviations(username, item.type, item.folderId!)
 
                 dispatchData({
                     type: 'setDeviation',
                     data: {
-                        name: item.name,
-                        folderId: item.folderId,
-                        type: item.type,
+                        folderName: item.name,
+                        folderId: item.folderId!,
+                        folderType: item.type,
+                        isSubFolder: item.parentId !== null,
+                        parentFolderName: item.parentFolderName ? item.parentFolderName : '',
                         deviations: res
                     }
                 })
+
                 const type = item.type === 'gallery' ? 'group' : 'subGroup'
                 dispatchPanel({
                     type: 'addCurrent',
@@ -127,19 +156,21 @@ const Panel: FC = () => {
                     }
                 })
 
-            }).then((res) => {
-                chrome.storage.sync.get(['settings'], ({settings}) => {
-                    dispatchData({
-                        type: 'setSettings',
-                        data: settings
-                    })
-                    dispatchPanel({
-                        type: 'setDownload',
-                        data: {
-                            download: true
-                        }
-                    })
+
+            }).then(async ()=>{
+                const {settings} = await chrome.storage.sync.get(['settings'])
+                dispatchData({
+                    type: 'setSettings',
+                    data: settings
                 })
+                dispatchPanel({
+                    type: 'setDownload',
+                    data: {
+                        download: true
+                    }
+                })
+            }).catch(err => {
+                console.log(err)
             })
         }
         else if (message.type === 'cancel') {
@@ -160,6 +191,7 @@ const Panel: FC = () => {
             deviationMapLimit && deviationMapLimit.continue()
             folderMapLimit && folderMapLimit.continue()
         }
+        return true
     }
     useEffect(() => {
 
@@ -184,6 +216,8 @@ const Panel: FC = () => {
             username: string,
             folderName: string,
             folderType: string,
+            isSubFolder: boolean,
+            parentFolderName: string,
             title: string,
             publishedDate: string,
             isDownloadable: boolean
@@ -210,60 +244,91 @@ const Panel: FC = () => {
             return true
         }
         const getFilename = (filename: string, fileType: string, autoRenameIfHasError: boolean, deviation: DeviationInfo) => {
-            filename = filename || '/deviantArtDownloader/{user}/{folder}/{deviation}'
+            filename = filename || '/deviantArtDownloader/{user}/{folderType}/{folder}/{deviation}'
+            if (deviation.isSubFolder) {
+                filename = filename
+                    .replaceAll('/{folder}/', '/{_parentFolderName}/{folder}/')
+                    .replace(/^{folder}\//, '/{_parentFolderName}/{folder}/')
+                    .replace(/\/{folder}$/, '/{_parentFolderName}/{folder}/')
+            }
             const dirs = filename.split('/')
+            let filenameIsValidate = true
             // 处理 / 开头的 filename
             if (dirs[0] === '') dirs.shift()
             for (let [index, dir] of dirs.entries()) {
                 // 替换 {user} {folder} {folderType} {deviation} {publishDate} {downloadDate} {downloadBy}
+                const folderWithSubFolderName = deviation.isSubFolder?`${deviation.folderName}_${deviation.parentFolderName}`:deviation.folderName
                 let _dir = dir
-                    .replace('{user}', deviation.username)
-                    .replace('{folder}', deviation.folderName)
-                    .replace('{folderType}', deviation.folderType)
-                    .replace('{deviation}', deviation.title)
-                    .replace('{publishDate}', deviation.publishedDate.slice(0, 10))
-                    .replace('{downloadDate}', date.format(new Date(), 'yyyy-mm-dd'))
-                    .replace('{downloadBy}', deviation.isDownloadable ? 'downloadByDownloadLink' : 'downloadByWebImage')
+                    .replaceAll('{user}', deviation.username)
+                    .replaceAll('{folder}', deviation.folderName)
+                    .replaceAll('{_parentFolderName}', deviation.parentFolderName)
+                    .replaceAll('{folderWithSubFolderName}', folderWithSubFolderName)
+                    .replaceAll('{folderType}', deviation.folderType)
+                    .replaceAll('{deviation}', deviation.title)
+                    .replaceAll('{publishDate}', deviation.publishedDate.slice(0, 10))
+                    .replaceAll('{downloadDate}', date.format(new Date(), 'yyyy-mm-dd'))
+                    .replaceAll('{downloadBy}', deviation.isDownloadable ? 'downloadByDownloadLink' : 'downloadByWebImage')
 
                 // 验证 filename
-                let isValidate = true,
+                let dirIsValidate = true,
                     text = ''
 
-
-                // 验证 是否存在非法字符
-                if (_v.filename.char(dir)) {
-                    if (autoRenameIfHasError) {
-                        _dir.replace(/[\\/:*?"<>|]/g, ' ')
+                if (autoRenameIfHasError) {
+                    // 替换非法字符
+                    if (_v.filename.char(_dir)) {
+                        const map: { [key: string]: string } = {
+                            ':': '：',
+                            '*': '＊',
+                            '?': '？',
+                            '"': '＂',
+                            '<': '＜',
+                            '>': '＞',
+                            '|': '｜',
+                        }
+                        for (let char of Object.keys(map)) {
+                            _dir = _dir.replace(char, map[char])
+                        }
                     }
-                    else {
-                        isValidate = false
-                        text = "folder or file name can't include \\/:*?\"<>|"
+                    //替换非法设备名
+                    if (_v.filename.deviceName(_dir)) {
+                        for (let deviceName of INVALID_DEVICE_NAMES) {
+                            _dir = _dir.replace(deviceName, `${deviceName}_`)
+                        }
                     }
-                }
-                // 验证 是否存在非法设备名
-                else if (_v.filename.deviceName(dir)) {
-                    if (autoRenameIfHasError) {
+                    // 验证 dir 是否为空
+                    if (_v.filename.isEmpty(_dir)) {
                         _dir = '_'
                     }
-                    else {
-                        isValidate = false
+                    // 截取超长字符串
+                    if (_v.filename.length(_dir)) {
+                        _dir = _dir.substr(0, 240)
+                    }
+                }
+                else {
+                    // 验证 是否存在非法字符
+                    if (_v.filename.char(_dir)) {
+                        dirIsValidate = false
+                        text = "folder or file name can't include \\/:*?\"<>|"
+                    }
+                    // 验证 是否存在非法设备名
+                    else if (_v.filename.deviceName(_dir)) {
+                        dirIsValidate = false
                         text = "folder or file name has invalid device name"
                     }
-
+                    // 验证 dir 是否为空
+                    else if (_v.filename.isEmpty(_dir)) {
+                        dirIsValidate = false
+                        text = "folder or file name can't be empty"
+                    }
+                    // 验证 是否超长
+                    else if (_v.filename.length(_dir)) {
+                        dirIsValidate = false
+                        text = "folder or file name length exceed 250"
+                    }
                 }
 
-                // 验证 dir 是否为空
-                if (_v.filename.isEmpty(dir)) {
-                    isValidate = false
-                    text = "folder or file name can't be empty"
-                }
-                // 验证 是否超长
-                if (_v.filename.length(dir)) {
-                    isValidate = false
-                    text = "folder or file name length exceed 250"
-                }
                 // 存在异常
-                if (!isValidate) {
+                if (!dirIsValidate) {
                     errors.push({
                         artist: deviation.username,
                         type: deviation.folderType,
@@ -271,12 +336,12 @@ const Panel: FC = () => {
                         deviation: deviation.title,
                         error: `download failed: ${text}`
                     })
+                    filenameIsValidate = false
                 }
-
                 dirs[index] = _dir
             }
 
-            return `${dirs.join('/')}.${fileType}`
+            return [`${dirs.join('/')}.${fileType}`, filenameIsValidate]
         }
 
         // 设置 panel
@@ -294,15 +359,15 @@ const Panel: FC = () => {
                 subGroup: {
                     title: 'Folders',
                     current: 0,
-                    total: stateData.folders.length
+                    total: stateData.deviations.length
                 }
             }
         })
 
         // 下载 folders
         folderMapLimit = new MapLimit(stateData.deviations, 1)
-        await folderMapLimit.execute(async (folder: Folder) => {
-            const {deviations, name:folderName, folderId, folderType} = folder
+        await folderMapLimit.execute(async (folder) => {
+            const {deviations, folderName, folderType, isSubFolder, parentFolderName} = folder
             // 设置 group
             dispatchPanel({
                 type: 'setPanel',
@@ -335,17 +400,18 @@ const Panel: FC = () => {
                     const fileType = getDownloadFileType(link!) as string
 
                     // 生成 filename
-                    // todo
                     const deviationInfo: DeviationInfo = {
                         username,
                         folderName,
                         folderType,
+                        isSubFolder,
+                        parentFolderName,
                         title: deviation.deviation.title,
                         publishedDate: deviation.deviation.publishedTime.slice(0, 10),
                         isDownloadable: deviation.deviation.isDownloadable
                     }
-                    const filename = getFilename(settings.filename, fileType, settings.autoRenameIfHasError, deviationInfo)
-
+                    const [filename, filenameIsValidate] = getFilename(settings.filename, fileType, settings.autoRenameIfHasError, deviationInfo)
+                    if (!filenameIsValidate) return
                     await _chrome.sendMessageP({
                         type: 'download',
                         url: link,
@@ -405,9 +471,11 @@ const Panel: FC = () => {
             const {artist, type, folder, deviation, error} = err
             return `${artist}/${type}/${folder}/${deviation}\n${error}`
         }).join('\n\n')
-        await _chrome.sendMessageP({
+        const blob = new Blob([error_text], {type: "text/plain"})
+        const url = window.URL.createObjectURL(blob)
+        await _chrome.sendMessage({
             type: 'resultFile',
-            text: error_text
+            url
         })
 
     }
@@ -431,9 +499,16 @@ const Panel: FC = () => {
                     }
                 })
                 // 通知 popup 下载完成
-                _chrome.sendMessage({
-                    type: 'finished'
-                })
+
+                chrome.runtime.sendMessage({type: 'finished'})
+                    // @ts-ignore
+                    .catch(err => {
+                        console.log(err)
+                    })
+                // @ts-ignore
+                //     .catch(err=>{
+                //         console.log('err', err)
+                // })
                 chrome.storage.sync.set({
                     status: 'finished'
                 })

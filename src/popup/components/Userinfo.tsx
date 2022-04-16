@@ -2,7 +2,7 @@ import React, {FC, useState} from 'react';
 import {Checkbox, Space, Button, Row, Tabs} from 'antd'
 import {UserInfoAction, ActionDataType} from '../reducers/userInfoReducer'
 import {CheckboxValueType} from 'antd/lib/checkbox/Group';
-
+import {LoadingOutlined} from '@ant-design/icons';
 const {TabPane} = Tabs
 
 export interface Props {
@@ -30,7 +30,6 @@ const Userinfo: FC<Props> = (props) => {
         selectedFavourites,
         dispatch
     } = props
-
     const getCheckboxGroup = (type: ActionDataType) => {
         const value = type === 'galleries' ? selectedGalleries : selectedFavourites
         const list = type === 'galleries' ? galleries : favourites
@@ -107,7 +106,7 @@ const Userinfo: FC<Props> = (props) => {
     return (
         <div className='userinfo'>
             {
-                requested && (
+                requested ? (
                     <Tabs tabBarExtraContent={buttons}>
                         <TabPane key='galleries' tab={
                             <span className='tab-title'>Gallery</span>
@@ -129,6 +128,10 @@ const Userinfo: FC<Props> = (props) => {
                     //         {getCheckboxGroup('favourites')}
                     //     </div>
                     // </>
+                ):(
+                    <div className='userinfo-loading'>
+                        <LoadingOutlined className='userinfo-loading-icon' /><span>loading</span>
+                    </div>
                 )
             }
         </div>

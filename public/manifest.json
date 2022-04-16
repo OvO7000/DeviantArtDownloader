@@ -2,27 +2,26 @@
   "short_name": "Deviant Art Downloader",
   "name": "Deviant Art Downloader",
   "version": "0.1.0",
-  "manifest_version": 2,
+  "manifest_version": 3,
   "description": "用于 Deviant Art 作品批量下载的 Chrome 扩展",
   "homepage_url": "http://www.ovo7.cn",
   "icons": {
-    "16": "images/icon16.png",
-    "48": "images/icon16.png",
-    "128": "images/icon16.png"
+    "16": "images/icon48.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
   },
-  "page_action": {
-    "default_icon": "images/icon16.png",
+  "action": {
+    "default_icon": "images/icon48.png",
     "default_title": "Deviant Art Downloader",
     "default_popup": "index.html"
   },
   "background": {
-    "scripts": ["static/js/background.js"],
-    "persistent": true
+    "service_worker": "background.js"
   },
   "content_scripts": [{
     "matches": ["*://www.deviantart.com/*"],
-    "css": ["static/css/content.css"],
-    "js": ["static/js/content.js"],
+    "css": ["static/content.css"],
+    "js": ["static/content.js"],
     "run_at": "document_end"
   }],
   "permissions": [

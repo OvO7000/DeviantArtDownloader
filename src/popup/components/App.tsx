@@ -2,6 +2,7 @@ import React, {FC, useEffect, useState} from 'react';
 import {_chrome, getPageType} from "../../common/js/utils";
 import Home from './Home'
 import Hint from './Hint'
+import DeviantArtDownloaderLogo from "../../common/images/DeviantArtDownloaderLogo.png"
 
 const App:FC = ()=>{
     const [username, setUsername] = useState('')
@@ -21,7 +22,6 @@ const App:FC = ()=>{
                     setUsername('')
                 }
             }
-
         })
     }
     useEffect(() => {
@@ -30,6 +30,11 @@ const App:FC = ()=>{
     // todo: 添加 logo
     return (
         <div className='app'>
+            <img
+                src={DeviantArtDownloaderLogo}
+                alt='DeviantArtDownloader'
+                className='app-logo'
+            />
             {
                 username?<Home username={username} />:<Hint />
             }

@@ -176,11 +176,11 @@ module.exports = function (webpackEnv) {
       // isEnvDevelopment && !shouldUseReactRefresh
       //   ? [ webpackDevClientEntry, paths.appIndexJs ]
       //   : paths.appIndexJs,
-      main: [isEnvDevelopment && !shouldUseReactRefresh
+      'static/main': [isEnvDevelopment && !shouldUseReactRefresh
         ? [webpackDevClientEntry, paths.appIndexJs]
         : paths.appIndexJs].filter(Boolean),
-      content: './src/content/index.tsx',
-      background: './src/background/index.tsx',
+      'static/content': './src/content/index.tsx',
+      'background': './src/background/index.tsx',
     },
     output: {
       // The build folder.
@@ -190,14 +190,14 @@ module.exports = function (webpackEnv) {
       // There will be one main bundle, and one file per asynchronous chunk.
       // In development, it does not produce real files.
       filename: isEnvProduction
-        ? 'static/js/[name].js'
-        : isEnvDevelopment && 'static/js/[name].bundle.js',
+        ? '[name].js'
+        : isEnvDevelopment && '[name].bundle.js',
       // TODO: remove this when upgrading to webpack 5
       futureEmitAssets: true,
       // There are also additional JS chunk files if you use code splitting.
       chunkFilename: isEnvProduction
-        ? 'static/js/[name].chunk.js'
-        : isEnvDevelopment && 'static/js/[name].chunk.js',
+        ? '[name].chunk.js'
+        : isEnvDevelopment && '[name].chunk.js',
       // webpack uses `publicPath` to determine where the app is being served from.
       // It requires a trailing slash, or the file assets will get an incorrect path.
       // We inferred the "public path" (such as / or /my-project) from homepage.
@@ -584,7 +584,7 @@ module.exports = function (webpackEnv) {
           {},
           {
             inject: true,
-            chunks: ['main'],
+            chunks: ['static/main'],
             template: paths.appHtml,
           },
           isEnvProduction
@@ -657,8 +657,8 @@ module.exports = function (webpackEnv) {
       new MiniCssExtractPlugin({
         // Options similar to the same options in webpackOptions.output
         // both options are optional
-        filename: 'static/css/[name].css',
-        chunkFilename: 'static/css/[name].chunk.css',
+        filename: '[name].css',
+        chunkFilename: '[name].chunk.css',
       }),
       // Generate an asset manifest file with the following content:
       // - "files" key: Mapping of all asset filenames to their corresponding
@@ -669,20 +669,20 @@ module.exports = function (webpackEnv) {
       new ManifestPlugin({
         fileName: 'asset-manifest.json',
         publicPath: paths.publicUrlOrPath,
-        generate: (seed, files, entrypoints) => {
-          const manifestFiles = files.reduce((manifest, file) => {
-            manifest[file.name] = file.path;
-            return manifest;
-          }, seed);
-          const entrypointFiles = entrypoints.main.filter(
-            fileName => !fileName.endsWith('.map')
-          );
-
-          return {
-            files: manifestFiles,
-            entrypoints: entrypointFiles,
-          };
-        },
+        // generate: (seed, files, entrypoints) => {
+        //   const manifestFiles = files.reduce((manifest, file) => {
+        //     manifest[file.name] = file.path;
+        //     return manifest;
+        //   }, seed);
+        //   const entrypointFiles = entrypoints.main.filter(
+        //     fileName => !fileName.endsWith('.map')
+        //   );
+        //
+        //   return {
+        //     files: manifestFiles,
+        //     entrypoints: entrypointFiles,
+        //   };
+        // },
       }),
       // Moment.js is an extremely popular library that bundles large locale files
       // by default due to how webpack interprets its code. This is a practical

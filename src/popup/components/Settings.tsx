@@ -94,7 +94,7 @@ const Settings: FC = () => {
         else setTimeRangeHint('')
     }
     // 自动重命名被修改
-    const handleAutoRenameIfHasErrorCheckboxClick = (e: CheckboxChangeEvent)=>{
+    const handleAutoRenameIfHasErrorCheckboxClick = (e: CheckboxChangeEvent) => {
         dispatch({
             type: 'setSettings',
             autoRenameIfHasError: e.target.checked
@@ -128,43 +128,52 @@ const Settings: FC = () => {
         })
     }
     // 获取提示信息
-    const getTooltip = (type: 'timeRange' | 'filename') => {
-        let content = (<div>info</div>)
+    const getTooltip = (type: 'timeRange' | 'filename' | 'autoRenameIfHasError') => {
+        let content = (<div className='settings-tooltip'>info</div>)
         if (type === 'timeRange') {
             content = (
-                <div>
+                <>
                     <p>1. when end time and start time both are empty, extension will download all deviations.</p>
                     <p>2. when start time is empty, extension will download all deviations publishedDate before end
                         time.</p>
                     <p>3. when end time is empty, extension will download all deviations publishedDate after start
                         time.</p>
-                </div>
+                </>
             )
         }
         else if (type === 'filename') {
             content = (
-                <div>
+                <>
                     <p>1. deviations will be downloaded to the download folder.</p>
                     <p>2. this string should be split by '/', the last part will be used as filename, and other parts
-                        will
-                        be used as folder name.</p>
+                        will be used as folder name.</p>
                     <p>3. deviations without download icon, will be downloaded from the web page, you can
                         use {'\u007b'}downloadBy{'\u007d'} to identify it.</p>
-                    <p>4. the extension provides some variables, below is the explanation of these variables.</p>
+                    <p>4. below is the explanation of the variables cam be used in filename setting.</p>
                     <ul>
                         <li>user: name of artist's account</li>
                         <li>folder: name of gallery or favourite</li>
+                        <li>folderWithSubFolderName: 'folderName_subFolderName'</li>
                         <li>folderType: 'gallery' or 'favourite'</li>
                         <li>deviation: name of deviation</li>
                         <li>publishDate: published date of deviation</li>
-                        <li>downloadDate: download date</li>
                         <li>downloadBy: 'downloadByDownloadLink' or 'downloadByWebImage'</li>
                     </ul>
-                </div>
+                </>
+            )
+        }
+        else if (type === 'autoRenameIfHasError') {
+            content = (
+                <>
+                    <p>1. ':*?"&lt;&gt;|' will be auto replaced with '：＊？＂＜＞｜'.</p>
+                    <p>2. Strings longer than 240 will be truncated to 240 characters.</p>
+                    <p>3. '_' will be automatically added after illegal device names, such as CON,PRN,etc.</p>
+                    <p>4. '_' will be used to replace empty filename or directory.</p>
+                </>
             )
         }
         return (
-            <Popover content={content}>
+            <Popover content={<div className='settings-tooltip'>{content}</div>}>
                 <Button shape="circle" size="small" className='settings-info' icon={<InfoOutlined/>}/>
             </Popover>
 
@@ -273,6 +282,7 @@ const Settings: FC = () => {
                         <Menu onClick={handleMenuClick}>
                             <Menu.Item key="user">user</Menu.Item>
                             <Menu.Item key="folder">folder</Menu.Item>
+                            <Menu.Item key="folderWithSubFolderName">folderWithSubFolderName</Menu.Item>
                             <Menu.Item key="folderType">folderType</Menu.Item>
                             <Menu.Item key="deviation">deviation</Menu.Item>
                             <Menu.Item key="publishDate">publishDate</Menu.Item>
@@ -302,20 +312,24 @@ const Settings: FC = () => {
                     className='settings-conflictAction-select'
                     size='small'
                 >
-                    <Option value='uniquify' className='settings-conflictAction-option'>rename with a counter</Option>
+                    <Option value='uniquify' className='settings-conflictAction-option'>rename with a
+                        counter</Option>
                     <Option value='overwrite' className='settings-conflictAction-option'>overwrite the existing
                         file</Option>
                 </Select>
             </div>
             <div className='settings-group settings-autoRenameIfHasError'>
-                <Checkbox
-                    checked={autoRenameIfHasError}
-                    onChange={handleAutoRenameIfHasErrorCheckboxClick}
-                >
-                    auto rename if has error in filename
-                </Checkbox>
-            </div>
+                <div className='settings-group-inner'>
+                    <Checkbox
+                        checked={autoRenameIfHasError}
+                        onChange={handleAutoRenameIfHasErrorCheckboxClick}
+                    >
+                        auto rename if has error in filename
+                    </Checkbox>
+                    {getTooltip('autoRenameIfHasError')}
+                </div>
 
+            </div>
         </div>
     )
 }

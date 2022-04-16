@@ -1,20 +1,20 @@
 
 
-class MapLimit {
+class MapLimit<T> {
     private executed: boolean = false
     private stopped: boolean = false
     private canceled: boolean = false
     private resolveList: Function[] = []
     private reject: Function | null = null
     constructor(
-        private list: any[] = [],
+        private list: T[] = [],
         private limit: number = 1
     ) {}
-    execute (asyncHandle: (...rest: any[]) => Promise<any>) {
+    execute (asyncHandle: (arg0: T) => Promise<any>) {
         if (!this.executed) {
             this.executed = true
-            let recursion = (arr: any[]): Promise<any> => {
-                return asyncHandle(arr.shift())
+            let recursion = (arr: T[]): Promise<any> => {
+                return asyncHandle(arr.shift()!)
                     .then(() => {
                         if (this.canceled) return
                         else if (arr.length !== 0 && this.stopped) {
@@ -30,7 +30,7 @@ class MapLimit {
                     })
             }
 
-            let listCopy = ([] as any[]).concat(this.list)
+            let listCopy = ([] as T[]).concat(this.list)
             let asyncList = [] // 正在进行的所有并发异步操作
             let _limit = this.list.length < this.limit ? this.list.length : this.limit
             while (_limit--) {

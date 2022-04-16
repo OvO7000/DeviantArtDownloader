@@ -1,4 +1,5 @@
 import {Deviation, getHTML} from './apis'
+
 // let DownloadOptions = chrome.downloads.DownloadOptions
 
 interface PageInfo {
@@ -9,6 +10,32 @@ type Page = {
     pageType: string,
     pageInfo: PageInfo
 }
+
+export const INVALID_DEVICE_NAMES: string[] = [
+    'CON',
+    'PRN',
+    'AUX',
+    'NUL',
+    'COM1',
+    'COM2',
+    'COM3',
+    'COM4',
+    'COM5',
+    'COM6',
+    'COM7',
+    'COM8',
+    'COM9',
+    'LPT1',
+    'LPT2',
+    'LPT3',
+    'LPT4',
+    'LPT5',
+    'LPT6',
+    'LPT7',
+    'LPT8',
+    'LPT9']
+
+export const GITHUB_URL: string = 'https://github.com/OvO7000/DeviantArtDownloader'
 
 export const getPageType = (url: string): Page => {
     let pageType: string = 'unknown'
@@ -120,34 +147,6 @@ export const sendMessageToTab = (type: string, data?: any) => {
     })
 }
 
-const checkFilename = (name: string) => {
-    const deviceName = [
-        'CON',
-        'PRN',
-        'AUX',
-        'NUL',
-        'COM1',
-        'COM2',
-        'COM3',
-        'COM4',
-        'COM5',
-        'COM6',
-        'COM7',
-        'COM8',
-        'COM9',
-        'LPT1',
-        'LPT2',
-        'LPT3',
-        'LPT4',
-        'LPT5',
-        'LPT6',
-        'LPT7',
-        'LPT8',
-        'LPT9']
-    let _name = name.trim().replace(/[\\/:*?"<>|]/g, ' ')
-    if (deviceName.includes(_name)) _name = 'auto renamed by deviant art downloader extension'
-    return _name.slice(0, 250)
-}
 
 export const _chrome = {
     sendMessageP: (item: SendMessageItem): Promise<void> => {
@@ -163,7 +162,12 @@ export const _chrome = {
         });
     },
     sendMessage: (item: SendMessageItem) => {
-        chrome.runtime.sendMessage(chrome.runtime.id, item)
+        // @ts-ignore
+        return chrome.runtime.sendMessage(item).then((response) => {
+            response.complete ? Promise.resolve(response) : Promise.reject(response)
+        }).catch((err: any) => {
+            console.log('err', err)
+        })
     },
     sendMessageToTabP: (type: string, data?: any): Promise<void> => {
         return new Promise((resolve, reject) => {
@@ -191,6 +195,21 @@ export const _chrome = {
             })
         })
     },
+    sendMessageToTab: async (type: string, data?: any): Promise<void> => {
+        const [tab] = await chrome.tabs.query({currentWindow: true, active: true})
+
+        if (tab && tab.id) {
+            interface Message {
+                type: string,
+                data?: any
+            }
+            const message: Message = {
+                type,
+                data
+            }
+            await chrome.tabs.sendMessage(tab.id, message)
+        }
+    },
     getTabInfoP: (): Promise<chrome.tabs.Tab> => {
         return new Promise((resolve, reject) => {
             chrome.tabs.query({currentWindow: true, active: true}, (tabs) => {
@@ -210,62 +229,23 @@ export const _chrome = {
             })
         })
     },
-    download: (options: chrome.downloads.DownloadOptions, cb: Function, times: number = 0) => {
-        // 下载次数 = 重试次数 + 1
-        let _times:number = times + 1
-        const _download = ()=>{
-            chrome.downloads.download(options, (downloadId: number | undefined) => {
-                _times--
-                if (downloadId === undefined && _times > 0) {
-                    _download()
-                }
-                else {
-                    cb(downloadId)
-                }
-            })
-        }
-        _download()
-    }
 }
 
 export const validate = {
     filename: {
-        isEmpty: (filename: string) =>{
+        isEmpty: (filename: string) => {
             return !filename.trim().length
         },
-        deviceName: (filename: string)=>{
-            const deviceName = [
-                'CON',
-                'PRN',
-                'AUX',
-                'NUL',
-                'COM1',
-                'COM2',
-                'COM3',
-                'COM4',
-                'COM5',
-                'COM6',
-                'COM7',
-                'COM8',
-                'COM9',
-                'LPT1',
-                'LPT2',
-                'LPT3',
-                'LPT4',
-                'LPT5',
-                'LPT6',
-                'LPT7',
-                'LPT8',
-                'LPT9']
-            console.log('folder', filename.trim().toUpperCase())
-            return deviceName.includes(filename.trim().toUpperCase())
+        deviceName: (filename: string) => {
+            // console.log('folder', filename.trim().toUpperCase())
+            return INVALID_DEVICE_NAMES.includes(filename.trim().toUpperCase())
         },
-        char: (filename: string)=>{
+        char: (filename: string) => {
             const reg = /[\\/:*?"<>|]/g
             return reg.test(filename.trim())
         },
-        length: (filename: string)=>{
-            return filename.trim().length > 250
+        length: (filename: string) => {
+            return filename.trim().length > 240
         },
     }
 }
@@ -294,7 +274,7 @@ export const date = {
         if (val === '' || val === undefined || val === null) return false
         const reg = /^(\d{4})(-|\/)(\d{1,2})\2(\d{1,2})$/
         if (!reg.test(val)) return false
-        const date = new Date(val) as (Date|"Invalid Date")
+        const date = new Date(val) as (Date | "Invalid Date")
         return !(date === null || date.toString() === "Invalid Date")
     },
 }

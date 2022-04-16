@@ -9,6 +9,9 @@ export interface Folder {
     name: string;
     folderId: null | number;
     totalItemCount: number;
+    parentId: null | number;
+    parentFolderName?: null | string;
+    subfolders: Folder[]
 }
 
 export interface Deviation {

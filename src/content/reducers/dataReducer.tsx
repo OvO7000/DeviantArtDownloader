@@ -2,32 +2,38 @@ import {Deviation, Folder, FolderType} from "../../common/js/apis";
 import _ from "lodash";
 import {SettingsState} from '../../popup/reducers/settingsReducer'
 
+export interface SimpleFolder {
+    folderName: string,
+    folderType: FolderType,
+    folderId: number,
+    isSubFolder: boolean,
+    parentFolderName: string,
+    deviations: Deviation[],
+}
+
 export interface DataState {
     username: string,
     folders: Folder[],
-    deviations: {
-        name: string,
-        type: FolderType,
-        folderId: number,
-        deviations: Deviation[],
-    }[],
+    deviations: SimpleFolder[],
     settings: SettingsState,
 }
 
 export type DataAction = {
-    type: 'init';
+    type: 'init',
     data: {
         // favourites: Folder[]
         // username: string,
         folders: Folder[],
         username: string
-    };
+    }
 } |
     {
         data: {
-            name: string;
-            folderId: number;
-            type: FolderType;
+            folderName: string,
+            folderId: number,
+            folderType: FolderType,
+            isSubFolder: boolean,
+            parentFolderName: string,
             deviations: Deviation[]
         };
         type: 'setDeviation'
@@ -37,8 +43,8 @@ export type DataAction = {
         type: 'setSettings'
     } |
     {
-    type: 'clear'
-};
+        type: 'clear'
+    };
 
 export const dataReducer = (state: DataState, action: DataAction) => {
     if (action.type === 'init') {
@@ -53,11 +59,14 @@ export const dataReducer = (state: DataState, action: DataAction) => {
     else if (action.type === 'setDeviation') {
         const _state = _.cloneDeep(state)
 
-        const {name, deviations, type, folderId} = action.data
+        const {folderName, deviations, folderType, folderId, isSubFolder, parentFolderName} = action.data
+        console.log('setDeviation called', action.data)
         _state.deviations.push({
-            name,
-            type,
+            folderName,
+            folderType,
             folderId,
+            isSubFolder,
+            parentFolderName,
             deviations
         })
         return _state

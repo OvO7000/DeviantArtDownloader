@@ -3,7 +3,7 @@ import {Button, Popover, Space} from 'antd'
 import {InfoOutlined, WarningOutlined} from '@ant-design/icons';
 
 import Userinfo from './Userinfo'
-import {sendMessageToTab} from '../../common/js/utils'
+import {_chrome} from '../../common/js/utils'
 import {UserInfoState, userInfoReducer} from '../reducers/userInfoReducer'
 import {getFolders} from "../../common/js/apis";
 
@@ -153,15 +153,12 @@ const Download: FC<HomeProps> = (props) => {
         // 下载选中 folders
         const download = () => {
             if (status === 'initialed') {
-                // const {isValidate, text} = validate(startTime, endTime, filename)
-                // if (!isValidate) {
-                //     setHint(text)
-                //     return
-                // }
-                sendMessageToTab('download', {
+                _chrome.sendMessageToTab('download', {
                     username,
                     galleries: _galleries.filter(item => selected.galleries.includes(item.name)),
                     favourites: _favourites.filter(item => selected.favourites.includes(item.name))
+                }).catch(err => {
+                    console.log(err)
                 })
                 dispatch({
                     type: 'setStatus',
@@ -172,7 +169,9 @@ const Download: FC<HomeProps> = (props) => {
             }
         }
         const stop = () => {
-            sendMessageToTab('stop')
+            _chrome.sendMessageToTab('stop').catch(err => {
+                console.log(err)
+            })
             dispatch({
                 type: 'setStatus',
                 data: {
@@ -181,7 +180,9 @@ const Download: FC<HomeProps> = (props) => {
             })
         }
         const cancel = () => {
-            sendMessageToTab('cancel')
+            _chrome.sendMessageToTab('cancel').catch(err => {
+                console.log(err)
+            })
             dispatch({
                 type: 'setStatus',
                 data: {
@@ -190,7 +191,9 @@ const Download: FC<HomeProps> = (props) => {
             })
         }
         const _continue = () => {
-            sendMessageToTab('continue')
+            _chrome.sendMessageToTab('continue').catch(err => {
+                console.log(err)
+            })
             dispatch({
                 type: 'setStatus',
                 data: {
@@ -266,7 +269,7 @@ const Download: FC<HomeProps> = (props) => {
     }
     return (
         <div className='download'>
-
+            <p className='download-username'>{username}</p>
             <Userinfo
                 requested={status !== 'beforeInit'}
                 username={username}
