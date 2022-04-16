@@ -23,7 +23,7 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
     * 所有 gallery 的下载进度
 4. 文件会下载到下载文件夹下，同时会生成一个 .txt 后缀的结果文件，记录下载失败的文件、失败原因。
 ### 4. 设置  
-点击下载界面右上角，可以切换到设置界面。
+点击下载界面右上角，可以切换到设置界面。  
 ![DeviantArtDownloader_popup_settings](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_settings.png)
 #### 4.1 只下载带有下载按钮的作品
 默认情况下，没有下载按钮的作品会从网页上获取图片。勾选该选项后，只会下载那些带有下载按钮的作品。
