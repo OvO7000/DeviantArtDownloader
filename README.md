@@ -1,12 +1,9 @@
 ## DeviantArtDownloader
-
-<!-- TOC -->
-- [简介](#简介)
-- [安装](#安装)
-- [使用](#使用)
-- [设置](#设置)
-<!-- /TOC -->
-
+  - [1. 简介](#1-简介)
+  - [2. 安装](#2-安装)
+  - [3. 使用](#3-使用)
+  - [4. 设置](#4-设置)
+  
 ### 1. 简介
 ![DeviantArtDownloader logo](https://github.com/OvO7000/DeviantArtDownloader/blob/dev/src/common/images/DeviantArtDownloaderLogo.png)
 DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.deviantart.com/) 作品、收藏的 chrome 扩展。
@@ -30,7 +27,8 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
 ![DeviantArtDownloader_popup_settings](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_settings.png)
 #### 4.1 只下载带有下载按钮的作品
 默认情况下，没有下载按钮的作品会从网页上获取图片。勾选该选项后，只会下载那些带有下载按钮的作品。
-#### 4.2 时间范围
+#### 4.2 时间范围- [DeviantArtDownloader](#deviantartdownloader)
+
 当没有指定”开始时间“、”结束时间“时，会下载所有作品。  
 当只有”开始时间“时，会下载发布时间在“开始时间”之后的作品。  
 当只有”结束时间“时，会下载发布时间在”结束时间“之前的作品。  
