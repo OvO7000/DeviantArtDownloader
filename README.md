@@ -12,11 +12,11 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
 ### 3. 使用
 1. 打开一个 DeviantArt 作者的首页，其他页面无法使用扩展。
 2. 点击 DeviantArtDownloader 按钮，会显示下载界面。  
-    ![DeviantArtDownloader_popup_download](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_download.png)  
+![DeviantArtDownloader_popup_download](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_download.png)  
     可以勾选需要下载的 gallery、favourite，点击 download 按钮进行下载。下载过程可以暂停、取消、继续。  
     > 注意事项：下载前需要关闭 chrome 的 设置>高级>下载内容>下载前询问每个文件的保存位置。
 3. 开始下载后，页面上会出现下载进度的提示框，显示以下内容:。  
-    ![DeviantArtDownloader_content](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_content.png)  
+![DeviantArtDownloader_content](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_content.png)  
     * 下载状态
     * 下载的文件名
     * 当前 gallery 的下载进度
@@ -27,7 +27,7 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
 ![DeviantArtDownloader_popup_settings](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_settings.png)
 #### 4.1 只下载带有下载按钮的作品
 默认情况下，没有下载按钮的作品会从网页上获取图片。勾选该选项后，只会下载那些带有下载按钮的作品。
-#### 4.2 时间范围- [DeviantArtDownloader](#deviantartdownloader)
+#### 4.2 时间范围
 
 当没有指定”开始时间“、”结束时间“时，会下载所有作品。  
 当只有”开始时间“时，会下载发布时间在“开始时间”之后的作品。  
