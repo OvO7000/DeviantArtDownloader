@@ -11,7 +11,7 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
 // todo
 ### 3. 使用
 1. 打开一个 DeviantArt 作者的首页，其他页面无法使用扩展。
-2. 点击 DeviantArtDownloader 按钮，会显示下载界面。  
+2. 点击浏览器右上角 DeviantArtDownloader 的图标，会显示下载界面。  
 ![DeviantArtDownloader_popup_download](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_download.png)  
     可以勾选需要下载的 gallery、favourite，点击 download 按钮进行下载。下载过程可以暂停、取消、继续。  
     > 注意事项：下载前需要关闭 chrome 的 设置>高级>下载内容>下载前询问每个文件的保存位置。
@@ -41,7 +41,7 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
 2. { ... } 形式的是扩展提供的变量，最终会被替换成作品的一些信息，下面是它们的说明：
     * user: 作者用户名
     * folder: gallery、favourite 名字统称为 folder
-    * folderWithSubFolderName: 没有 Sub Gallery 时和 folder 一样，当有Sub Gallery 时则变成”folderName_subFolderName“形式
+    * folderWithSubFolderName: 没有 Sub Gallery 时和 {folder} 一样，当有Sub Gallery 时则变成”folderName_subFolderName“形式
     * folderType: ”gallery“ 或 ”favourite“
     * deviation: 作品的名字
     * publishDate: 作品发布日期
