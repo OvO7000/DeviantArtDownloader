@@ -1,3 +1,5 @@
+(中文)[https://github.com/OvO7000/DeviantArtDownloader/tree/dev#deviantartdownloader]
+
 ## DeviantArtDownloader
   - [1. Introduction](#1-Introduction)
   - [2. Install](#2-Install)
