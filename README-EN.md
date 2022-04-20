@@ -16,7 +16,9 @@ DeviantArtDownloader is a Chrome extension used to download galleries, favourite
 2. Click the icon of DeviantArtDownloader in the upper right corner of the browser, The download panel will be opened.
 ![DeviantArtDownloader_popup_download](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_download.png)  
     You can select galleries and favourites you want to download, click the download button to start the download.The download process can be paused, canceled or resumed. 
-    > Caution: please close Chrome's option in Settings->Downloads->Ask where to save each file before downloading.
+    > Caution: Please close Chrome's option in Settings->Downloads->Ask where to save each file before downloading.  
+
+    > Caution: In order to prevent being banned by deviantArt because of too much request, when the number of deviations in a folder is greater than 100, the download speed will drop to 2s per request. When a download failure occurred in the result file with a 403 response code, this is due to deviantArt forbidding your access.
 3. After the download starts, a prompt used to show download progress will appear on the web page, showing the following content:  
 ![DeviantArtDownloader_content](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_content.png)  
     * Download status
@@ -40,11 +42,13 @@ The extension supports specifying the downloaded file path and file name by a st
 
 1. The string should be split by '/', the last part will be used as the file name, and file type will be added to it, the other parts will be used to create corresponding folders.
 2. The parts looks like { ... } are variables provided by the extension, they will be replaced with some data, here are some explain:
-    * user: name of artist's account
+    * user: name of folder's creator
+    * author: name of deviation's creator, when download a favourite folder can use this
     * folder: gallery and favourite collectively referred to as folder
     * folderWithSubFolderName: same with {folder} when the folder hasn't sub galleries, otherwise it will become the form of 'folderName_subFolderName'
     * folderType: could be 'gallery' or 'favourite'
     * deviation: the title of a deviation
+    * deviationId: the id of a deviation
     * publishDate: the published date of a deviation
     * downloadDate: the download date of a deviation
     * downloadBy: the way the deviation is downloaded by, could be 'downloadByDownloadLink' or 'downloadByWebImage'
@@ -61,3 +65,4 @@ When this option is checked, the extension will automatically handle the followi
 2. Strings longer than 240 will be truncated to 240 characters.
 3. '_' will be automatically added after illegal device names, such as CON,PRN,etc.
 4. '_' will be used to replace empty filename or directory.
+5. '.' at the end of a directory will be auto removed.

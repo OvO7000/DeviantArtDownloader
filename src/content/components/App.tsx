@@ -8,11 +8,12 @@ import {
     getDownloadLink,
     date,
     getDownloadFileType,
-    validate as _v,
+    validateFilename as validateFilenameUtil,
     INVALID_DEVICE_NAMES
 } from '../../common/js/utils'
 import {getFolders, getDeviations} from '../../common/js/apis'
 import MapLimit from '../../common/js/MapLimit'
+import RequestLimit from '../../common/js/RequestLimit'
 import {panelReducer, PanelState} from "../reducers/panelReducer"
 import {dataReducer, DataState, SimpleFolder} from "../reducers/dataReducer"
 
@@ -54,7 +55,7 @@ const initialPanelState: PanelState = {
 }
 
 let folderMapLimit: MapLimit<SimpleFolder>
-let deviationMapLimit: MapLimit<Deviation>
+let deviationRequestLimit: RequestLimit<Deviation>
 
 type Message = {
     type: 'download',
@@ -77,7 +78,26 @@ const Panel: FC = () => {
 
 
     // 监听 popup/background 事件
-    const events = (message: Message, sender: MessageSender, sendResponse: any) => {
+    const events = async (message: Message, sender: MessageSender, sendResponse: any) => {
+        const validateTimeRange = (startTime: string, endTime: string, publishedTime: string) => {
+            const _startTime = new Date(startTime)
+            const _endTime = new Date(endTime)
+            const _publishedTime = new Date(publishedTime)
+
+            const startTimeValid = date.isDateFormat(startTime)
+            const endTimeValid = date.isDateFormat(endTime)
+            if (startTimeValid && endTimeValid) {
+                if (_publishedTime < _startTime || _publishedTime > _endTime) return false
+            }
+            else if (startTimeValid) {
+                if (_publishedTime < _startTime) return false
+            }
+            else if (endTimeValid) {
+                if (_publishedTime > _endTime) return false
+            }
+            return true
+        }
+
         // 抓取、下载作品
         if (message.type === 'download') {
             const {galleries, favourites, username} = message.data
@@ -91,7 +111,11 @@ const Panel: FC = () => {
                     subFolders = subFolders.concat(subFolderWithParentName)
                 }
             })
+
             const folders = galleries.concat(favourites, subFolders)
+            folders.forEach(folder => {
+                folder.folderType = folder.type === 'gallery' ? 'gallery' : 'favourite'
+            })
             dispatchData({
                 type: 'init',
                 data: {
@@ -106,10 +130,12 @@ const Panel: FC = () => {
                     status: 'crawling',
                     group: {
                         title: 'Galleries',
+                        current: 0,
                         total: galleries.length
                     },
                     subGroup: {
                         title: 'Favourites',
+                        current: 0,
                         total: favourites.length
                     },
                 }
@@ -120,9 +146,15 @@ const Panel: FC = () => {
                     show: true
                 }
             })
+
+            const {settings} = await chrome.storage.sync.get(['settings'])
+            dispatchData({
+                type: 'setSettings',
+                data: settings
+            })
             // 抓取作品列表
             const limit = 3
-            mapLimit(folders, limit, async (item: Folder) => {
+            await mapLimit(folders, limit, async (item: Folder) => {
 
                 // 设置 panel 的 current
                 dispatchPanel({
@@ -133,8 +165,11 @@ const Panel: FC = () => {
                 })
 
                 // 获取单个 folder 下 deviation
-                const res = await getDeviations(username, item.type, item.folderId!)
-
+                const deviations = await getDeviations(username, item.type, item.folderId!)
+                const filteredDeviations = deviations.filter(deviation=>{
+                    // 检查时间范围
+                    return validateTimeRange(settings.startTime, settings.endTime, deviation.deviation.publishedTime)
+                })
                 dispatchData({
                     type: 'setDeviation',
                     data: {
@@ -143,7 +178,7 @@ const Panel: FC = () => {
                         folderType: item.type,
                         isSubFolder: item.parentId !== null,
                         parentFolderName: item.parentFolderName ? item.parentFolderName : '',
-                        deviations: res
+                        deviations: filteredDeviations
                     }
                 })
 
@@ -157,24 +192,16 @@ const Panel: FC = () => {
                 })
 
 
-            }).then(async ()=>{
-                const {settings} = await chrome.storage.sync.get(['settings'])
-                dispatchData({
-                    type: 'setSettings',
-                    data: settings
-                })
-                dispatchPanel({
-                    type: 'setDownload',
-                    data: {
-                        download: true
-                    }
-                })
-            }).catch(err => {
-                console.log(err)
+            })
+            dispatchPanel({
+                type: 'setDownload',
+                data: {
+                    download: true
+                }
             })
         }
         else if (message.type === 'cancel') {
-            deviationMapLimit && deviationMapLimit.cancel()
+            deviationRequestLimit && deviationRequestLimit.cancel()
             folderMapLimit && folderMapLimit.cancel()
             dispatchPanel({
                 type: 'setShow',
@@ -184,11 +211,11 @@ const Panel: FC = () => {
             })
         }
         else if (message.type === 'stop') {
-            deviationMapLimit && deviationMapLimit.stop()
+            deviationRequestLimit && deviationRequestLimit.stop()
             folderMapLimit && folderMapLimit.stop()
         }
         else if (message.type === 'continue') {
-            deviationMapLimit && deviationMapLimit.continue()
+            deviationRequestLimit && deviationRequestLimit.continue()
             folderMapLimit && folderMapLimit.continue()
         }
         return true
@@ -205,44 +232,30 @@ const Panel: FC = () => {
     // 下载图片
     const download = async () => {
         interface IError {
-            artist: string,
-            type: string,
-            folder: string,
+            username: string
+            author: string,
+            folderType: string,
+            folderName: string,
             deviation: string,
+            deviationId: number,
             error: string
         }
 
         interface DeviationInfo {
             username: string,
+            author: string
             folderName: string,
             folderType: string,
             isSubFolder: boolean,
             parentFolderName: string,
             title: string,
+            deviationId: number,
             publishedDate: string,
-            isDownloadable: boolean
+            isDownloadable: boolean,
         }
 
         const errors: IError[] = []
         const {username, settings} = stateData
-        const validateTimeRange = (startTime: string, endTime: string, publishedTime: string) => {
-            const _startTime = new Date(startTime)
-            const _endTime = new Date(endTime)
-            const _publishedTime = new Date(publishedTime)
-
-            const startTimeValid = date.isDateFormat(startTime)
-            const endTimeValid = date.isDateFormat(endTime)
-            if (startTimeValid && endTimeValid) {
-                if (_publishedTime < _startTime || _publishedTime > _endTime) return false
-            }
-            else if (startTimeValid) {
-                if (_publishedTime < _startTime) return false
-            }
-            else if (endTimeValid) {
-                if (_publishedTime > _startTime) return false
-            }
-            return true
-        }
         const getFilename = (filename: string, fileType: string, autoRenameIfHasError: boolean, deviation: DeviationInfo) => {
             filename = filename || '/deviantArtDownloader/{user}/{folderType}/{folder}/{deviation}'
             if (deviation.isSubFolder) {
@@ -256,10 +269,12 @@ const Panel: FC = () => {
             // 处理 / 开头的 filename
             if (dirs[0] === '') dirs.shift()
             for (let [index, dir] of dirs.entries()) {
-                // 替换 {user} {folder} {folderType} {deviation} {publishDate} {downloadDate} {downloadBy}
-                const folderWithSubFolderName = deviation.isSubFolder?`${deviation.folderName}_${deviation.parentFolderName}`:deviation.folderName
+                // 替换 {user} 等变量
+                const folderWithSubFolderName = deviation.isSubFolder ? `${deviation.parentFolderName}_${deviation.folderName}` : deviation.folderName
                 let _dir = dir
                     .replaceAll('{user}', deviation.username)
+                    .replaceAll('{deviationId}', deviation.deviationId.toString())
+                    .replaceAll('{author}', deviation.author)
                     .replaceAll('{folder}', deviation.folderName)
                     .replaceAll('{_parentFolderName}', deviation.parentFolderName)
                     .replaceAll('{folderWithSubFolderName}', folderWithSubFolderName)
@@ -275,7 +290,7 @@ const Panel: FC = () => {
 
                 if (autoRenameIfHasError) {
                     // 替换非法字符
-                    if (_v.filename.char(_dir)) {
+                    if (validateFilenameUtil.hasInvalidChar(_dir)) {
                         const map: { [key: string]: string } = {
                             ':': '：',
                             '*': '＊',
@@ -284,61 +299,71 @@ const Panel: FC = () => {
                             '<': '＜',
                             '>': '＞',
                             '|': '｜',
+                            '/': '／'
                         }
                         for (let char of Object.keys(map)) {
-                            _dir = _dir.replace(char, map[char])
+                            _dir = _dir.replaceAll(char, map[char])
                         }
                     }
                     //替换非法设备名
-                    if (_v.filename.deviceName(_dir)) {
-                        for (let deviceName of INVALID_DEVICE_NAMES) {
-                            _dir = _dir.replace(deviceName, `${deviceName}_`)
-                        }
+                    if (validateFilenameUtil.isInvalidDeviceName(_dir)) {
+                        _dir = `${_dir}_`
                     }
                     // 验证 dir 是否为空
-                    if (_v.filename.isEmpty(_dir)) {
+                    if (validateFilenameUtil.isEmpty(_dir)) {
                         _dir = '_'
                     }
                     // 截取超长字符串
-                    if (_v.filename.length(_dir)) {
+                    if (validateFilenameUtil.exceedsMaxlength(_dir)) {
                         _dir = _dir.substr(0, 240)
+                    }
+                    // 去除文件夹末尾 .
+                    if (validateFilenameUtil.endsWithDecimalPoint(_dir) && index !== dirs.length - 1) {
+                        _dir = _dir.substr(0, _dir.length - 1)
                     }
                 }
                 else {
                     // 验证 是否存在非法字符
-                    if (_v.filename.char(_dir)) {
+                    if (validateFilenameUtil.hasInvalidChar(_dir)) {
                         dirIsValidate = false
                         text = "folder or file name can't include \\/:*?\"<>|"
                     }
                     // 验证 是否存在非法设备名
-                    else if (_v.filename.deviceName(_dir)) {
+                    else if (validateFilenameUtil.isInvalidDeviceName(_dir)) {
                         dirIsValidate = false
                         text = "folder or file name has invalid device name"
                     }
                     // 验证 dir 是否为空
-                    else if (_v.filename.isEmpty(_dir)) {
+                    else if (validateFilenameUtil.isEmpty(_dir)) {
                         dirIsValidate = false
                         text = "folder or file name can't be empty"
                     }
                     // 验证 是否超长
-                    else if (_v.filename.length(_dir)) {
+                    else if (validateFilenameUtil.exceedsMaxlength(_dir)) {
                         dirIsValidate = false
                         text = "folder or file name length exceed 250"
+                    }
+                    // 验证 文件夹末尾是否是 .
+                    else if (validateFilenameUtil.endsWithDecimalPoint(_dir) && index !== dirs.length - 1) {
+                        dirIsValidate = false
+                        text = "folder name can't ends with ."
                     }
                 }
 
                 // 存在异常
                 if (!dirIsValidate) {
                     errors.push({
-                        artist: deviation.username,
-                        type: deviation.folderType,
-                        folder: deviation.folderName,
+                        username: deviation.username,
+                        author: deviation.author,
+                        folderType: deviation.folderType,
+                        folderName: deviation.folderName,
                         deviation: deviation.title,
+                        deviationId: deviation.deviationId,
                         error: `download failed: ${text}`
                     })
                     filenameIsValidate = false
                 }
-                dirs[index] = _dir
+                dirs[index] = _dir.trim()
             }
 
             return [`${dirs.join('/')}.${fileType}`, filenameIsValidate]
@@ -379,8 +404,9 @@ const Panel: FC = () => {
                 }
             })
 
-            deviationMapLimit = new MapLimit(deviations, 3)
-            await deviationMapLimit.execute(async (deviation: Deviation) => {
+            const time = deviations.length > 100 ? 2000 : 500
+            deviationRequestLimit = new RequestLimit(deviations, time)
+            await deviationRequestLimit.execute(async (deviation: Deviation) => {
                 // 设置 current
                 dispatchPanel({
                     type: 'setPanel',
@@ -392,8 +418,6 @@ const Panel: FC = () => {
                 try {
                     // 没有下载按钮的 deviation 不下载
                     if (settings.downloadDownloadable && !deviation.deviation.isDownloadable) return
-                    // 检查时间范围
-                    if (!validateTimeRange(settings.startTime, settings.endTime, deviation.deviation.publishedTime)) return
 
                     // 获取下载链接
                     const link = await getDownloadLink(deviation)
@@ -402,10 +426,12 @@ const Panel: FC = () => {
                     // 生成 filename
                     const deviationInfo: DeviationInfo = {
                         username,
+                        author: deviation.deviation.author.username,
                         folderName,
                         folderType,
                         isSubFolder,
                         parentFolderName,
+                        deviationId: deviation.deviation.deviationId,
                         title: deviation.deviation.title,
                         publishedDate: deviation.deviation.publishedTime.slice(0, 10),
                         isDownloadable: deviation.deviation.isDownloadable
@@ -417,22 +443,26 @@ const Panel: FC = () => {
                         url: link,
                         filename,
                         conflictAction: settings.conflictAction
-                    }).catch((err) => {
+                    }).catch((error) => {
                         errors.push({
-                            artist: username,
-                            type: folderType,
-                            folder: folderName,
+                            username,
+                            author: deviation.deviation.author.username,
+                            folderType,
+                            folderName,
                             deviation: deviation.deviation.title,
-                            error: err
+                            deviationId: deviation.deviation.deviationId,
+                            error
                         })
                     })
-                } catch (e: any) {
+                } catch (error: any) {
                     errors.push({
-                        artist: username,
-                        type: folderType,
-                        folder: folderName,
+                        username,
+                        author: deviation.deviation.author.username,
+                        folderType,
+                        folderName,
                         deviation: deviation.deviation.title,
-                        error: e.message
+                        deviationId: deviation.deviation.deviationId,
+                        error
                     })
                 }
 
@@ -467,12 +497,21 @@ const Panel: FC = () => {
         })
 
         // 下载结果文件
-        let error_text: string = errors.map((err) => {
-            const {artist, type, folder, deviation, error} = err
-            return `${artist}/${type}/${folder}/${deviation}\n${error}`
-        }).join('\n\n')
+        let error_text: string = errors.map((err, index) => {
+            const {username, author, folderType, folderName, deviation, deviationId, error} = err
+            return `${index}. username: ${username}
+author: ${author}
+folderType: ${folderType}
+folderName: ${folderName}
+deviation: ${deviation}
+deviationId: ${deviationId}
+error: ${error}
+---------------------------------------
+`
+        }).join('')
         const blob = new Blob([error_text], {type: "text/plain"})
         const url = window.URL.createObjectURL(blob)
+        console.log('errors', errors)
         await _chrome.sendMessage({
             type: 'resultFile',
             url
@@ -505,10 +544,6 @@ const Panel: FC = () => {
                     .catch(err => {
                         console.log(err)
                     })
-                // @ts-ignore
-                //     .catch(err=>{
-                //         console.log('err', err)
-                // })
                 chrome.storage.sync.set({
                     status: 'finished'
                 })

@@ -5,7 +5,7 @@ import {CheckboxChangeEvent} from 'antd/lib/checkbox/Checkbox';
 import {MenuInfo} from "rc-menu/lib/interface";
 
 import {ConflictAction, SettingsAction, settingsReducer, SettingsState} from '../reducers/settingsReducer'
-import {date, validate as _v} from "../../common/js/utils";
+import {date, validateFilename as validateFilenameUtil} from "../../common/js/utils";
 
 const {Option} = Select
 
@@ -18,6 +18,18 @@ const settingsState: SettingsState = {
     autoRenameIfHasError: false
 }
 
+const VARIABLES = [
+    'user',
+    'author',
+    'folder',
+    'folderWithSubFolderName',
+    'folderType',
+    'deviation',
+    'deviationId',
+    'publishDate',
+    'downloadDate',
+    'downloadBy',
+]
 const Settings: FC = () => {
     const [
         {
@@ -109,11 +121,13 @@ const Settings: FC = () => {
     }
     // filename 输入框修改
     const handleFilenameChange = (e: ChangeEvent<HTMLInputElement>) => {
+        console.log('handleFilenameChange called')
         dispatch({
             type: 'setSettings',
             filename: e.target.value
         })
-        const validate = validateFilename(filename)
+        const validate = validateFilename(e.target.value)
+        console.log('validate', validate)
         if (!validate.isValidate) setFilenameHint(validate.text)
         else setFilenameHint('')
     }
@@ -147,11 +161,10 @@ const Settings: FC = () => {
                     <p>1. deviations will be downloaded to the download folder.</p>
                     <p>2. this string should be split by '/', the last part will be used as filename, and other parts
                         will be used as folder name.</p>
-                    <p>3. deviations without download icon, will be downloaded from the web page, you can
-                        use {'\u007b'}downloadBy{'\u007d'} to identify it.</p>
-                    <p>4. below is the explanation of the variables cam be used in filename setting.</p>
+                    <p>3. below is the explanation of the variables cam be used in filename setting.</p>
                     <ul>
-                        <li>user: name of artist's account</li>
+                        <li>user: name of folder's creator</li>
+                        <li>author: name of deviation's creator</li>
                         <li>folder: name of gallery or favourite</li>
                         <li>folderWithSubFolderName: 'folderName_subFolderName'</li>
                         <li>folderType: 'gallery' or 'favourite'</li>
@@ -169,6 +182,7 @@ const Settings: FC = () => {
                     <p>2. Strings longer than 240 will be truncated to 240 characters.</p>
                     <p>3. '_' will be automatically added after illegal device names, such as CON,PRN,etc.</p>
                     <p>4. '_' will be used to replace empty filename or directory.</p>
+                    <p>5. '.' at the end of a directory will be auto removed.</p>
                 </>
             )
         }
@@ -212,22 +226,30 @@ const Settings: FC = () => {
 
         const dirs = filename.split('/')
         for (let [index, dir] of dirs.entries()) {
-            // 替换 {user} {folder} {folderType} {deviation} {publishDate} {downloadDate} {downloadBy}
-            const _dir = dir.replace(/{user}|{folder}|{folderType}|{deviation}|{publishDate}|{downloadDate}|{downloadBy}/ig, '-')
+            let _dir = dir
+            // 替换变量
+            for (let variable of VARIABLES) {
+                _dir.replaceAll(variable, '-')
+            }
             // 验证 dir 是否为空
-            if (_v.filename.isEmpty(_dir) && index !== 0) {
+            if (validateFilenameUtil.isEmpty(_dir) && index !== 0) {
                 result.isValidate = false
                 result.text = "folder or file name can't be empty"
             }
             // 验证 是否存在非法设备名
-            else if (_v.filename.deviceName(_dir)) {
+            else if (validateFilenameUtil.isInvalidDeviceName(_dir)) {
                 result.isValidate = false
                 result.text = "folder or file name has invalid device name"
             }
             // 验证 是否存在非法字符
-            else if (_v.filename.char(_dir)) {
+            else if (validateFilenameUtil.hasInvalidChar(_dir)) {
                 result.isValidate = false
                 result.text = "folder or file can't include \\/:*?\"<>|"
+            }
+            // 验证 是否以 . 结尾
+            else if (validateFilenameUtil.endsWithDecimalPoint(_dir) && index !== dirs.length - 1) {
+                result.isValidate = false
+                result.text = "folder name can't ends with ."
             }
         }
 
@@ -280,14 +302,11 @@ const Settings: FC = () => {
                     />
                     <Dropdown overlay={
                         <Menu onClick={handleMenuClick}>
-                            <Menu.Item key="user">user</Menu.Item>
-                            <Menu.Item key="folder">folder</Menu.Item>
-                            <Menu.Item key="folderWithSubFolderName">folderWithSubFolderName</Menu.Item>
-                            <Menu.Item key="folderType">folderType</Menu.Item>
-                            <Menu.Item key="deviation">deviation</Menu.Item>
-                            <Menu.Item key="publishDate">publishDate</Menu.Item>
-                            <Menu.Item key="downloadDate">downloadDate</Menu.Item>
-                            <Menu.Item key="downloadBy">downloadBy</Menu.Item>
+                            {
+                                VARIABLES.map(variable=>{
+                                    return (<Menu.Item key={variable}>{variable}</Menu.Item>)
+                                })
+                            }
                         </Menu>
                     }>
                         <Button size='small' className='settings-filename-button'>

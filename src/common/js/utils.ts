@@ -96,9 +96,11 @@ export const getDownloadLink = async (item: Deviation) => {
         return link.href
     }
     else {
-        const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
-        const link = doc.querySelector(selector) as HTMLLinkElement
-        return link.href
+        // const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
+        const selector = 'img[src^="https://images-wixmp-"]'
+        const link = doc.querySelector(selector) as HTMLImageElement
+        console.log('link', link.src)
+        return link.src
     }
 }
 
@@ -203,6 +205,7 @@ export const _chrome = {
                 type: string,
                 data?: any
             }
+
             const message: Message = {
                 type,
                 data
@@ -231,22 +234,23 @@ export const _chrome = {
     },
 }
 
-export const validate = {
-    filename: {
-        isEmpty: (filename: string) => {
-            return !filename.trim().length
-        },
-        deviceName: (filename: string) => {
-            // console.log('folder', filename.trim().toUpperCase())
-            return INVALID_DEVICE_NAMES.includes(filename.trim().toUpperCase())
-        },
-        char: (filename: string) => {
-            const reg = /[\\/:*?"<>|]/g
-            return reg.test(filename.trim())
-        },
-        length: (filename: string) => {
-            return filename.trim().length > 240
-        },
+export const validateFilename = {
+    isEmpty: (filename: string) => {
+        return !filename.trim().length
+    },
+    isInvalidDeviceName: (filename: string) => {
+        // console.log('folder', filename.trim().toUpperCase())
+        return INVALID_DEVICE_NAMES.includes(filename.trim().toUpperCase())
+    },
+    hasInvalidChar: (filename: string) => {
+        const reg = /[\\/:*?"<>|]/g
+        return reg.test(filename.trim())
+    },
+    exceedsMaxlength: (filename: string) => {
+        return filename.trim().length > 240
+    },
+    endsWithDecimalPoint: (filename: string) => {
+        return filename.trim().endsWith('.')
     }
 }
 

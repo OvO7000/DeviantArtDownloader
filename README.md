@@ -17,6 +17,8 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
 ![DeviantArtDownloader_popup_download](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_download.png)  
     可以勾选需要下载的 gallery、favourite，点击 download 按钮进行下载。下载过程可以暂停、取消、继续。  
     > 注意事项：下载前需要关闭 chrome 的 设置>高级>下载内容>下载前询问每个文件的保存位置。
+   
+    > 注意事项：为了防止请求数量过多被 deviantArt 禁止访问，当一个 folder 的 deviation 数量大于 100 时，下载速度会下降至 2s 一个请求。如果在结果文件里面出现下载失败，并且是 403 应答码，就是由于被 deviantArt 禁止访问导致。
 3. 开始下载后，页面上会出现下载进度的提示框，显示以下内容:。  
 ![DeviantArtDownloader_content](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_content.png)  
     * 下载状态
@@ -41,11 +43,13 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
 
 1. 字符串通过”/“分割, 最后一部分会被加上文件类型作为文件名，其他部分会创建对应的文件夹。
 2. { ... } 形式的是扩展提供的变量，最终会被替换成作品的一些信息，下面是它们的说明：
-    * user: 作者用户名
+    * user: folder 创建者
+    * author: 作品的创建者，下载 favourite 时可以用到
     * folder: gallery、favourite 名字统称为 folder
     * folderWithSubFolderName: 没有 Sub Gallery 时和 {folder} 一样，当有Sub Gallery 时则变成”folderName_subFolderName“形式
     * folderType: ”gallery“ 或 ”favourite“
     * deviation: 作品的名字
+    * deviationId: 作品的id
     * publishDate: 作品发布日期
     * downloadDate: 下载日期
     * downloadBy: 下载方式，”downloadByDownloadLink“ 或 ”downloadByWebImage“
@@ -62,3 +66,4 @@ DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.devian
 2. 当文件名是“CON”、“PRN“、”AUX”、“NUL“、”COM1”、“LPT1”等设备名时，会自动追加“_”。
 3. 当文件名为空时，会使用“_”作为文件名。
 4. 当文件名长度（不包括后缀名）超过 240 个字符时，会自动截取为 240 个字符。
+5. 文件夹名字以“.”结尾时，会被自动移除。

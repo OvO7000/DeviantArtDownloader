@@ -3,23 +3,28 @@ import axios, {AxiosResponse} from 'axios'
 
 export type FolderType = 'gallery' | 'collection'
 export interface Folder {
-    [propName: string]: any;
-
+    // [propName: string]: any;
     type: FolderType;
+    folderType: 'gallery' | 'favourite';
     name: string;
     folderId: null | number;
     totalItemCount: number;
     parentId: null | number;
-    parentFolderName?: null | string;
-    subfolders: Folder[]
+    parentFolderName?: string;
+    subfolders: Folder[];
 }
 
 export interface Deviation {
     deviation: {
-        [propName: string]: any;
+        // [propName: string]: any;
         deviationId: number;
         isDownloadable: boolean;
-        title: string
+        title: string;
+        url: string;
+        publishedTime: string;
+        author: {
+            username: string
+        }
     }
 }
 
@@ -61,7 +66,7 @@ const _getFolders = async (username: string, type:FolderType='gallery', limit: n
     return result.data.sectionData.modules[0].moduleData.folders
 }
 export const getFolders = async (username: string, type:FolderType='gallery'):Promise<Folder[]>=>{
-    let list: any[] = []
+    let list: Folder[] = []
     const fun = async (offset:number=0) =>{
         const result = await _getFolders(username, type, 48, offset)
         list = list.concat(result.results)
@@ -96,7 +101,7 @@ const _getDeviations = async (username: string, type: FolderType, offset: number
     return result.data
 }
 export const getDeviations = async (username: string, type: FolderType, folderId: number):Promise<Deviation[]>=>{
-    let list: any[] = []
+    let list: Deviation[] = []
     const fun = async (offset: number=0) =>{
         const result = await _getDeviations(username, type, offset, 48, folderId)
         list = list.concat(result.results)
