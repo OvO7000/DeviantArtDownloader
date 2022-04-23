@@ -1,7 +1,7 @@
 {
   "short_name": "Deviant Art Downloader",
   "name": "Deviant Art Downloader",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "manifest_version": 3,
   "description": "用于 Deviant Art 作品批量下载的 Chrome 扩展",
   "homepage_url": "http://www.ovo7.cn",

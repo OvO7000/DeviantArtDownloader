@@ -38,7 +38,7 @@ const Download: FC<HomeProps> = (props) => {
         },
         dispatch
     ] = useReducer(userInfoReducer, userInfoState)
-
+    console.log('download selected', selected)
 
     // 获取 popup 页面信息
     const init = () => {
@@ -47,7 +47,7 @@ const Download: FC<HomeProps> = (props) => {
         chrome.storage.sync.get(['username', 'galleries', 'favourites', 'selected', 'status'],
             ({username, galleries, favourites, selected, status}) => {
                 // 未初始化、初始化状态，重新获取用户信息
-                if (status === 'beforeInit' || status === 'initialed') {
+                if (status === undefined || status === 'beforeInit' || status === 'initialed') {
                     getFolders(newUsername).then((galleries) => {
                         getFolders(newUsername, 'collection').then((favourites) => {
 
