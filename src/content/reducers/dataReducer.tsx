@@ -60,7 +60,7 @@ export const dataReducer = (state: DataState, action: DataAction) => {
         const _state = _.cloneDeep(state)
 
         const {folderName, deviations, folderType, folderId, isSubFolder, parentFolderName} = action.data
-        console.log('setDeviation called', action.data)
+        // console.log('setDeviation called', action.data)
         _state.deviations.push({
             folderName,
             folderType,
@@ -88,7 +88,7 @@ export const dataReducer = (state: DataState, action: DataAction) => {
                 endTime: '',
                 filename: '',
                 conflictAction: 'uniquify',
-                autoRenameIfHasError: false
+                autoRenameIfHasError: true
             }
         }
         return _state

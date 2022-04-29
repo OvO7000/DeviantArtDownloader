@@ -15,7 +15,7 @@ const settingsState: SettingsState = {
     endTime: '',
     filename: '',
     conflictAction: 'uniquify',
-    autoRenameIfHasError: false
+    autoRenameIfHasError: true
 }
 
 const VARIABLES = [
@@ -48,20 +48,12 @@ const Settings: FC = () => {
     useEffect(() => {
         chrome.storage.sync.get(['settings'],
             ({settings}) => {
-                const timeRangeValidate = validateTimeRange(settings.startTime, settings.endTime)
-                const filenameValidate = validateFilename(settings.filename)
-                const startTime = timeRangeValidate.isValidate ? settings.startTime : ''
-                const endTime = timeRangeValidate.isValidate ? settings.endTime : ''
-                const filename = filenameValidate.isValidate ? settings.filename : ''
-                dispatch({
-                    type: 'setSettings',
-                    downloadDownloadable: settings.downloadDownloadable,
-                    startTime,
-                    endTime,
-                    filename,
-                    conflictAction: settings.conflictAction,
-                    autoRenameIfHasError: settings.autoRenameIfHasError,
-                })
+                if (settings) {
+                    dispatch({
+                        type: 'setSettings',
+                        ...settings
+                    })
+                }
             })
         // 将存在错误的 setting 项置空
         return () => {
@@ -303,7 +295,7 @@ const Settings: FC = () => {
                     <Dropdown overlay={
                         <Menu onClick={handleMenuClick}>
                             {
-                                VARIABLES.map(variable=>{
+                                VARIABLES.map(variable => {
                                     return (<Menu.Item key={variable}>{variable}</Menu.Item>)
                                 })
                             }

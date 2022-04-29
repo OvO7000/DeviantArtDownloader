@@ -33,7 +33,7 @@ const initialDataState: DataState = {
         endTime: '',
         filename: '',
         conflictAction: 'uniquify',
-        autoRenameIfHasError: false
+        autoRenameIfHasError: true
     }
 }
 const initialPanelState: PanelState = {
@@ -147,11 +147,16 @@ const Panel: FC = () => {
                 }
             })
 
-            const {settings} = await chrome.storage.sync.get(['settings'])
-            dispatchData({
-                type: 'setSettings',
-                data: settings
-            })
+            let {settings} = await chrome.storage.sync.get(['settings'])
+            if (settings) {
+                dispatchData({
+                    type: 'setSettings',
+                    data: settings
+                })
+            } else {
+                settings = stateData.settings
+            }
+
             // 抓取作品列表
             const limit = 3
             await mapLimit(folders, limit, async (item: Folder) => {
@@ -166,7 +171,7 @@ const Panel: FC = () => {
 
                 // 获取单个 folder 下 deviation
                 const deviations = await getDeviations(username, item.type, item.folderId!)
-                const filteredDeviations = deviations.filter(deviation=>{
+                const filteredDeviations = deviations.filter(deviation => {
                     // 检查时间范围
                     return validateTimeRange(settings.startTime, settings.endTime, deviation.deviation.publishedTime)
                 })
@@ -299,7 +304,8 @@ const Panel: FC = () => {
                             '<': '＜',
                             '>': '＞',
                             '|': '｜',
-                            '/': '／'
+                            '/': '／',
+                            '~': '～'
                         }
                         for (let char of Object.keys(map)) {
                             _dir = _dir.replaceAll(char, map[char])
@@ -326,7 +332,7 @@ const Panel: FC = () => {
                     // 验证 是否存在非法字符
                     if (validateFilenameUtil.hasInvalidChar(_dir)) {
                         dirIsValidate = false
-                        text = "folder or file name can't include \\/:*?\"<>|"
+                        text = "folder or file name can't include \\/:*?\"<>|~"
                     }
                     // 验证 是否存在非法设备名
                     else if (validateFilenameUtil.isInvalidDeviceName(_dir)) {
@@ -403,6 +409,7 @@ const Panel: FC = () => {
                     }
                 }
             })
+            console.log('folder', folder)
 
             const time = deviations.length > 100 ? 2000 : 500
             deviationRequestLimit = new RequestLimit(deviations, time)
@@ -414,7 +421,6 @@ const Panel: FC = () => {
                         current: deviation.deviation.title
                     }
                 })
-
                 try {
                     // 没有下载按钮的 deviation 不下载
                     if (settings.downloadDownloadable && !deviation.deviation.isDownloadable) return
@@ -422,7 +428,7 @@ const Panel: FC = () => {
                     // 获取下载链接
                     const link = await getDownloadLink(deviation)
                     const fileType = getDownloadFileType(link!) as string
-
+                    console.log('link', link)
                     // 生成 filename
                     const deviationInfo: DeviationInfo = {
                         username,
@@ -436,6 +442,8 @@ const Panel: FC = () => {
                         publishedDate: deviation.deviation.publishedTime.slice(0, 10),
                         isDownloadable: deviation.deviation.isDownloadable
                     }
+                    console.log('deviationInfo', deviationInfo)
+
                     const [filename, filenameIsValidate] = getFilename(settings.filename, fileType, settings.autoRenameIfHasError, deviationInfo)
                     if (!filenameIsValidate) return
                     await _chrome.sendMessageP({
@@ -455,6 +463,7 @@ const Panel: FC = () => {
                         })
                     })
                 } catch (error: any) {
+                    console.log('caught error', error)
                     errors.push({
                         username,
                         author: deviation.deviation.author.username,
