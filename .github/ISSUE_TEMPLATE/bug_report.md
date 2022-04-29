@@ -23,6 +23,12 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
+**Settings**
+Please provide the settings of the extension,you can find the setting panel by click the gear icon.
+
+**Download Information**
+Please provide the artist's name, folder name, or the image you are trying to download.
+
 **Desktop (please complete the following information):**
  - OS: [e.g. iOS]
  - Browser [e.g. chrome, safari]
