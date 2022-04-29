@@ -85,22 +85,62 @@ export const mapLimit = (list: any[], limit: number, asyncHandle: (...rest: any[
     return Promise.all(asyncList);  // 所有并发异步操作都完成后，本次并发控制迭代完成
 }
 
-export const getDownloadLink = async (item: Deviation) => {
+
+export const checkPage = async (doc: HTMLElement, selector: string, time: number = 1) => {
+    const stopper = (time: number = 1000): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve()
+            }, time)
+        })
+    }
+
+    while (time > 0) {
+        if (doc.querySelector(selector)) return true
+        time--
+        await stopper()
+        console.log('stopper called')
+    }
+    return false
+}
+
+export const getDownloadLink = async (item: Deviation): Promise<string> => {
+    console.log('getDownloadLink called')
     const {isDownloadable, url} = item.deviation
     const doc = await getHTML(url)
+    try {
+        if (isDownloadable) {
+            const selector = 'a[data-hook="download_button"]'
+            let link = doc.querySelector(selector) as HTMLAnchorElement
+            // 可能同时存在付费、免费下载
+            if (!link) {
+                const d = doc.querySelector('path[d^="M11.91 2.88L12 0H4v7H2.36L0 9.51l7"]')
+                console.log('d', d)
+                if (d) {
+                    const btn = d.closest('._21OYk._1EXgC') as HTMLButtonElement
+                    console.log('btn', btn)
+                    if (btn) btn.click()
+                    const hasDownloadLink = await checkPage(doc, 'a[download]', 20)
+                    console.log('link', doc.querySelector(selector))
+                    if (hasDownloadLink) {
+                        link = doc.querySelector('a[download]') as HTMLAnchorElement
+                    }
+                }
 
-    if (isDownloadable) {
-        const selector = 'a[data-hook="download_button"]'
-        const link = doc.querySelector(selector) as HTMLAnchorElement
-        if (!link) return
-        return link.href
-    }
-    else {
-        // const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
-        const selector = 'img[src^="https://images-wixmp-"]'
-        const link = doc.querySelector(selector) as HTMLImageElement
-        console.log('link', link.src)
-        return link.src
+            }
+            // 直接下载
+            return link.href
+        }
+        else {
+            // const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
+            const selector = 'img[src^="https://images-wixmp-"]'
+            const link = doc.querySelector(selector) as HTMLImageElement
+            console.log('link', link.src)
+            return link.src
+        }
+    } catch (err) {
+        console.log('getDownloadLink err', err)
+        throw new Error("can't get download link")
     }
 }
 
@@ -243,7 +283,7 @@ export const validateFilename = {
         return INVALID_DEVICE_NAMES.includes(filename.trim().toUpperCase())
     },
     hasInvalidChar: (filename: string) => {
-        const reg = /[\\/:*?"<>|]/g
+        const reg = /[\\/:*?"<>|~]/g
         return reg.test(filename.trim())
     },
     exceedsMaxlength: (filename: string) => {

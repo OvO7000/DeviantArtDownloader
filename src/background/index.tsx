@@ -3,8 +3,9 @@ import DownloadOptions = chrome.downloads.DownloadOptions
 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('download called')
+    console.log('background called')
     if (message.type === 'download')    {
+        console.log('download called')
         try {
             const {url, filename, conflictAction} = message
             const options: DownloadOptions = {
