@@ -3,9 +3,9 @@ import DownloadOptions = chrome.downloads.DownloadOptions
 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('background called')
+    // console.log('background called')
     if (message.type === 'download')    {
-        console.log('download called')
+        // console.log('download called')
         try {
             const {url, filename, conflictAction} = message
             const options: DownloadOptions = {
@@ -13,23 +13,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 filename,
                 conflictAction
             }
-            console.log(url)
-            console.log(filename)
-            console.log(conflictAction)
 
             // @ts-ignore
             chrome.downloads.download(options).then((value) => {
-                console.log('download value', value)
                 sendResponse({complete: true})
             }).catch((err: any) => {
-                console.log('download failed', err)
                 sendResponse({
                     complete: false,
                     error: 'download failed: error occurred when downloading the file via browser'
                 })
             })
         } catch (e) {
-            console.log('download failed2',e)
             sendResponse({
                 complete: false,
                 error: 'download failed'
@@ -50,7 +44,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.downloads.download(options).then(() => {
             sendResponse({complete: true})
         }).catch((err: any)=>{
-            console.log('resultFile err', err)
             sendResponse({
                 complete: false,
                 error: 'download failed'

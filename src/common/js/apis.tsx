@@ -114,13 +114,12 @@ export const getDeviations = async (username: string, type: FolderType, folderId
 }
 
 export const getHTML = async (url: string)=>{
-    console.log('getHTML called', url)
+    // console.log('getHTML called', url)
     const result:AxiosResponse<HTMLElement> = await axios({
         method: 'get',
         url,
         responseType: 'document'
     })
-    console.log('getHTML result', result)
     return result.data
 }
 

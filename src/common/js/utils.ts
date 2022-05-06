@@ -99,13 +99,34 @@ export const checkPage = async (doc: HTMLElement, selector: string, time: number
         if (doc.querySelector(selector)) return true
         time--
         await stopper()
-        console.log('stopper called')
     }
     return false
 }
 
+export const decodeString = (str: string)=>{
+    return str.replace(/\\"/g, '"')
+        .replace(/\\'/g, "'")
+        .replace(/\\&/g, "&")
+        .replace(/\\\\/g, "\\")
+}
+
 export const getDownloadLink = async (item: Deviation): Promise<string> => {
-    console.log('getDownloadLink called')
+    const getLinkFromScript = (doc: HTMLElement):string=>{
+        const scripts = Array.from(doc.querySelectorAll('script'))
+        let targetScript = scripts[scripts.length - 2].innerText
+        let index1 = targetScript.indexOf('window.__INITIAL_STATE__')
+        let index2 = targetScript.indexOf('window.__URL_CONFIG__')
+        targetScript = targetScript.slice(index1, index2)
+
+        index1 = targetScript.indexOf('"')
+        index2 = targetScript.lastIndexOf('"')
+        targetScript = targetScript.slice(index1+1, index2)
+
+        const json = JSON.parse(decodeString(targetScript))
+        // @ts-ignore
+        return Array.from(Object.values(json['@@entities'].deviationExtended))[0].download.url
+    }
+    // console.log('getDownloadLink called')
     const {isDownloadable, url} = item.deviation
     const doc = await getHTML(url)
     try {
@@ -113,21 +134,7 @@ export const getDownloadLink = async (item: Deviation): Promise<string> => {
             const selector = 'a[data-hook="download_button"]'
             let link = doc.querySelector(selector) as HTMLAnchorElement
             // 可能同时存在付费、免费下载
-            if (!link) {
-                const d = doc.querySelector('path[d^="M11.91 2.88L12 0H4v7H2.36L0 9.51l7"]')
-                console.log('d', d)
-                if (d) {
-                    const btn = d.closest('._21OYk._1EXgC') as HTMLButtonElement
-                    console.log('btn', btn)
-                    if (btn) btn.click()
-                    const hasDownloadLink = await checkPage(doc, 'a[download]', 20)
-                    console.log('link', doc.querySelector(selector))
-                    if (hasDownloadLink) {
-                        link = doc.querySelector('a[download]') as HTMLAnchorElement
-                    }
-                }
-
-            }
+            if (!link) return getLinkFromScript(doc)
             // 直接下载
             return link.href
         }
@@ -135,11 +142,10 @@ export const getDownloadLink = async (item: Deviation): Promise<string> => {
             // const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
             const selector = 'img[src^="https://images-wixmp-"]'
             const link = doc.querySelector(selector) as HTMLImageElement
-            console.log('link', link.src)
             return link.src
         }
     } catch (err) {
-        console.log('getDownloadLink err', err)
+        console.log(err, 'err')
         throw new Error("can't get download link")
     }
 }

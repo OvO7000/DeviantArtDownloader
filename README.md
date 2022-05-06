@@ -11,7 +11,7 @@
 DeviantArtDownloader 是一个用于批量下载 [DeviantArt](https://www.deviantart.com/) 作品、收藏的 chrome 扩展。
 ### 2. 安装
 #### 2.1 从应用商店下载
-已提交审核，等待审核通过...
+可以点击[这里](https://chrome.google.com/webstore/detail/deviant-art-downloader/gbfhkaekginiijjfnjlmcaldmjpiajmm/related)下载。
 #### 2.2 本地安装
 1. 可以从[这里](https://github.com/OvO7000/DeviantArtDownloader/releases/tag/v1.0.0)下载 zip 格式的压缩包，内部是打包过后的代码。
 2. 在 Chrome 地址栏输入 chrome://extensions，点击回车，来到 Chrome 扩展的管理界面。
