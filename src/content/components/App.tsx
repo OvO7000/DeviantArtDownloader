@@ -409,7 +409,6 @@ const Panel: FC = () => {
                     }
                 }
             })
-            console.log('folder', folder)
 
             const time = deviations.length > 100 ? 2000 : 500
             deviationRequestLimit = new RequestLimit(deviations, time)
@@ -428,7 +427,6 @@ const Panel: FC = () => {
                     // 获取下载链接
                     const link = await getDownloadLink(deviation)
                     const fileType = getDownloadFileType(link!) as string
-                    console.log('link', link)
                     // 生成 filename
                     const deviationInfo: DeviationInfo = {
                         username,
@@ -442,7 +440,6 @@ const Panel: FC = () => {
                         publishedDate: deviation.deviation.publishedTime.slice(0, 10),
                         isDownloadable: deviation.deviation.isDownloadable
                     }
-                    console.log('deviationInfo', deviationInfo)
 
                     const [filename, filenameIsValidate] = getFilename(settings.filename, fileType, settings.autoRenameIfHasError, deviationInfo)
                     if (!filenameIsValidate) return
@@ -463,7 +460,6 @@ const Panel: FC = () => {
                         })
                     })
                 } catch (error: any) {
-                    console.log('caught error', error)
                     errors.push({
                         username,
                         author: deviation.deviation.author.username,
@@ -520,7 +516,6 @@ error: ${error}
         }).join('')
         const blob = new Blob([error_text], {type: "text/plain"})
         const url = window.URL.createObjectURL(blob)
-        console.log('errors', errors)
         await _chrome.sendMessage({
             type: 'resultFile',
             url

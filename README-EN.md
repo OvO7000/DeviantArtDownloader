@@ -10,16 +10,15 @@
 ![DeviantArtDownloader logo](https://github.com/OvO7000/DeviantArtDownloader/blob/dev/src/common/images/DeviantArtDownloaderLogo.png)
 DeviantArtDownloader is a Chrome extension used to download galleries, favourites from [DeviantArt](https://www.deviantart.com/).
 ### 2. Installation
-#### 2.1 download from web store
-Waiting for the review...
-#### 2.2 
-local installation
+#### 2.1 download from chrome web store
+You can download from [here](https://chrome.google.com/webstore/detail/deviant-art-downloader/gbfhkaekginiijjfnjlmcaldmjpiajmm/related).
+#### 2.2 local installation
 1. You can download the extension from [here](https://github.com/OvO7000/DeviantArtDownloader/releases/tag/v1.0.0), inside it is the packaged code。
 2. Enter chrome://extensions in the Chrome address bar and click Enter to go to the Chrome extension management page.
 3. Open 'Developer mode', click 'Load unpacked', select the unpacked folder, that is the folder where manifest.json is located.
 4. A panel of Deviant Art Downloader will appear at the current page, and you can start using the extension after clicking the button in the lower right corner of the panel.
 ### 3. Usage
-1. Open an artist's homepage on DeviantArt, the extension is not available for other pages。
+1. Open an artist's homepage on DeviantArt, the extension is not available for other pages.
 2. Click the icon of DeviantArtDownloader in the upper right corner of the browser, The download panel will be opened.
 ![DeviantArtDownloader_popup_download](https://github.com/OvO7000/images/blob/master/%E5%BC%80%E5%8F%91/DeviationArt%20Downloader/DeviantArtDownloader_popup_download.png)  
     You can select galleries and favourites you want to download, click the download button to start the download.The download process can be paused, canceled or resumed. 
