@@ -38,7 +38,7 @@ const Download: FC<HomeProps> = (props) => {
         },
         dispatch
     ] = useReducer(userInfoReducer, userInfoState)
-    console.log('download selected', selected)
+    // console.log('download selected', selected)
 
     // 获取 popup 页面信息
     const init = () => {
