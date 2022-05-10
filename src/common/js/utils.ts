@@ -140,8 +140,8 @@ export const getDownloadLink = async (item: Deviation): Promise<string> => {
         }
         else {
             // const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
-            const selector = 'img[src^="https://images-wixmp-"]'
-            const link = doc.querySelector(selector) as HTMLImageElement
+            const selector = item.deviation.isVideo?'video[src^="https://wixmp-"]':'img[src^="https://images-wixmp-"]'
+            const link = doc.querySelector(selector) as HTMLImageElement | HTMLVideoElement
             return link.src
         }
     } catch (err) {

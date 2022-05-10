@@ -374,7 +374,7 @@ const Panel: FC = () => {
 
             return [`${dirs.join('/')}.${fileType}`, filenameIsValidate]
         }
-
+        // console.log('data', stateData.deviations)
         // 设置 panel
         dispatchPanel({
             type: 'setPanel',
@@ -426,7 +426,9 @@ const Panel: FC = () => {
 
                     // 获取下载链接
                     const link = await getDownloadLink(deviation)
+                    // console.log('link', link)
                     const fileType = getDownloadFileType(link!) as string
+                    // console.log('fileType', fileType)
                     // 生成 filename
                     const deviationInfo: DeviationInfo = {
                         username,
