@@ -1,5 +1,5 @@
 import {Deviation, getHTML} from './apis'
-
+import {LiteratureDownloadType} from "../../popup/reducers/settingsReducer"
 // let DownloadOptions = chrome.downloads.DownloadOptions
 
 interface PageInfo {
@@ -85,7 +85,6 @@ export const mapLimit = (list: any[], limit: number, asyncHandle: (...rest: any[
     return Promise.all(asyncList);  // 所有并发异步操作都完成后，本次并发控制迭代完成
 }
 
-
 export const checkPage = async (doc: HTMLElement, selector: string, time: number = 1) => {
     const stopper = (time: number = 1000): Promise<void> => {
         return new Promise((resolve, reject) => {
@@ -103,31 +102,226 @@ export const checkPage = async (doc: HTMLElement, selector: string, time: number
     return false
 }
 
-export const decodeString = (str: string)=>{
+export const decodeString = (str: string) => {
     return str.replace(/\\"/g, '"')
         .replace(/\\'/g, "'")
         .replace(/\\&/g, "&")
         .replace(/\\\\/g, "\\")
 }
 
+interface InitialState {
+    '@@entities': {
+        deviation: {
+            [propNames: number]: {
+                textContent: {
+                    html: {
+                        markup: string
+                    }
+                }
+            }
+        }
+        deviationExtended: {
+            [propNames: number]: {
+                download: {
+                    url: string
+                },
+                descriptionText: {
+                    html: {
+                        markup: string
+                    }
+                }
+            }
+        }
+    },
+    '@@config': {
+        csrfToken: string
+    }
+}
+
+export const getInitialState = (doc: HTMLElement): InitialState => {
+    const scripts = Array.from(doc.querySelectorAll('script'))
+    let targetScript = scripts[scripts.length - 2].innerText
+    let index1 = targetScript.indexOf('window.__INITIAL_STATE__')
+    let index2 = targetScript.indexOf('window.__URL_CONFIG__')
+    targetScript = targetScript.slice(index1, index2)
+
+    index1 = targetScript.indexOf('"')
+    index2 = targetScript.lastIndexOf('"')
+    targetScript = targetScript.slice(index1 + 1, index2)
+
+    return JSON.parse(decodeString(targetScript))
+}
+
+export const getCsrfToken = (doc: HTMLElement): string => {
+    const json = getInitialState(doc)
+    return json['@@config'].csrfToken
+}
+
+// export const getLiterature =  async (item: Deviation): Promise<string> => {
+//     const {url, deviationId} = item.deviation
+//
+//     const getLiteratureFromScript = (doc: HTMLElement, deviationId: number):[string, string]=>{
+//         const json = getInitialState(doc)
+//         console.log('state', json)
+//         const text = json['@@entities'].deviation[deviationId].textContent.html.markup
+//         const descriptionText = json['@@entities'].deviationExtended[deviationId].descriptionText.html.markup
+//         return [text, descriptionText]
+//     }
+//     const doc = await getHTML(url)
+//     const [text, descriptionText] = getLiteratureFromScript(doc, deviationId)
+//
+//     return `${text}\n${descriptionText}`
+// }
+
+export const getLiterature = async (item: Deviation, fileType: LiteratureDownloadType = 'txt'): Promise<string> => {
+    const {url, legacyTextEditUrl} = item.deviation
+    const isLegacy = !(legacyTextEditUrl === null)
+    const isTxt = fileType === 'txt'
+    const doc = await getHTML(url)
+
+    function getNodes(doc: HTMLElement, isLegacy: boolean) {
+        let textContentNodes
+        let descriptionNodes
+        if (isLegacy) {
+            textContentNodes = doc.querySelector('.legacy-journal')!.childNodes
+            descriptionNodes = doc.querySelector('main > div > div > div > div.legacy-journal')!.childNodes
+        }
+        else {
+            textContentNodes = doc.querySelector('.da-editor-journal>div>div>div')!.childNodes
+            descriptionNodes = doc.querySelector('main > div > div > div > div.legacy-journal')!.childNodes
+        }
+
+        return [textContentNodes, descriptionNodes]
+    }
+
+    function getText(nodes: NodeListOf<ChildNode>, isTxt: boolean) {
+        let result: string = ''
+        for (let node of nodes) {
+            const {nodeType, nodeName, nodeValue} = node as HTMLElement
+            // 文本节点
+            if (nodeType === 3) {
+                result += nodeValue!.trim()
+            }
+            else if (nodeType === 1 && nodeName === 'UL') {
+                for (let li of node.childNodes) {
+                    result += `* ${getText(li.childNodes, isTxt)}`
+                }
+            }
+            else if (nodeType === 1 && nodeName === 'OL') {
+                for (let i = 0; i < node.childNodes.length; i++) {
+                    result += `${i + 1}. ${getText(node.childNodes[i].childNodes, isTxt)}`
+                }
+            }
+            else if (nodeType === 1 && nodeName === 'H2') {
+                const childText = getText(node.childNodes, isTxt)
+                if (childText === '') result += '  \n'
+                else result += isTxt ? `${childText}\n` : `## ${childText}  \n`
+            }
+            else if (nodeType === 1 && nodeName === 'P') {
+                const childText = getText(node.childNodes, isTxt)
+                result += isTxt ? `${childText}\n` : `${childText}  \n`
+            }
+            else if (nodeType === 1 && nodeName === 'LI') {
+                const childText = getText(node.childNodes, isTxt)
+                result += isTxt ? `${childText}\n` : `${childText}  \n`
+            }
+            else if (nodeType === 1 && nodeName === 'EM') {
+                const childText = getText(node.childNodes, isTxt)
+                result += isTxt ? childText : `*${childText}*`
+            }
+            else if (nodeType === 1 && nodeName === 'A') {
+                const childText = getText(node.childNodes, isTxt)
+                const head = result.endsWith('!')?' ':''
+                const tail = (node as HTMLElement).querySelector('img')?'  \n':''
+                result += isTxt ? childText : `${head}[${childText}](${(node as HTMLAnchorElement).href})${tail}`
+            }
+            else if (nodeType === 1 && nodeName === 'SPAN') {
+                const childText = getText(node.childNodes, isTxt)
+                result += childText
+            }
+            else if (nodeType === 1 && nodeName === 'STRONG') {
+                const childText = getText(node.childNodes, isTxt)
+                result += isTxt ? childText : `**${childText}**`
+            }
+            else if (nodeType === 1 && nodeName === 'U') {
+                const childText = getText(node.childNodes, isTxt)
+                result += isTxt ? childText : `<u>${childText}</u>`
+            }
+            else if (nodeType === 1 && nodeName === 'BLOCKQUOTE') {
+                const childText = getText(node.childNodes, isTxt)
+                result += isTxt ? `${childText}\n` : `> ${childText}  \n  \n`
+            }
+            else if (nodeType === 1 && nodeName === 'IMG') {
+                result += isTxt ? '' : `![${getText(node.childNodes, isTxt)}](${(node as HTMLImageElement).src})`
+            }
+            else if (nodeType === 1 && nodeName === 'DIV') {
+                result += isTxt ? '' : getText(node.childNodes, isTxt)
+            }
+            else if (nodeType === 1 && nodeName === 'svg') {
+                result += isTxt ? '\n' : '\n---  \n'
+            }
+
+        }
+        return result
+    }
+
+    function getLegacyText(nodes: NodeListOf<ChildNode>, isTxt: boolean) {
+        let result: string = ''
+        for (let node of nodes) {
+            const {nodeType, nodeName, nodeValue, innerText} = node as HTMLElement
+            // 文本节点
+            if (nodeType === 3) {
+                result += nodeValue!.trim()
+            }
+            else if (nodeType === 1 && nodeName === 'B') {
+                result += isTxt ? innerText : `**${innerText}**`
+            }
+            else if (nodeType === 1 && nodeName === 'I') {
+                result += isTxt ? innerText : `*${innerText}*`
+            }
+            else if (nodeType === 1 && nodeName === 'A') {
+                const childText = getLegacyText(node.childNodes, isTxt)
+                result += isTxt ? innerText : `${result.endsWith('!')?' ':''}[${childText}](${(node as HTMLAnchorElement).href})`
+            }
+            else if (nodeType === 1 && nodeName === 'IMG') {
+                result += isTxt ? '' : `![${(node as HTMLImageElement).alt}](${(node as HTMLImageElement).src})`
+            }
+            else if (nodeType === 1 && nodeName === 'BR') {
+                result += isTxt ? '\n' : '  \n'
+            }
+            else if (nodeType === 1 && nodeName === 'DIV') {
+                const childText = getLegacyText(node.childNodes, isTxt)
+                result += isTxt ? `${childText}\n`: `${childText}  \n`
+            }
+        }
+        return result
+    }
+
+    const [textContentNodes, descriptionNodes] = getNodes(doc, isLegacy)
+    let result: string = ''
+    if (isLegacy) {
+        result = getLegacyText(textContentNodes, isTxt) + getLegacyText(descriptionNodes, isTxt)
+    }
+    else {
+        result = getText(textContentNodes, isTxt) + getLegacyText(descriptionNodes, isTxt)
+    }
+
+    return result
+}
+
+
 export const getDownloadLink = async (item: Deviation): Promise<string> => {
-    const getLinkFromScript = (doc: HTMLElement):string=>{
-        const scripts = Array.from(doc.querySelectorAll('script'))
-        let targetScript = scripts[scripts.length - 2].innerText
-        let index1 = targetScript.indexOf('window.__INITIAL_STATE__')
-        let index2 = targetScript.indexOf('window.__URL_CONFIG__')
-        targetScript = targetScript.slice(index1, index2)
-
-        index1 = targetScript.indexOf('"')
-        index2 = targetScript.lastIndexOf('"')
-        targetScript = targetScript.slice(index1+1, index2)
-
-        const json = JSON.parse(decodeString(targetScript))
-        // @ts-ignore
-        return Array.from(Object.values(json['@@entities'].deviationExtended))[0].download.url
+    const {isDownloadable, url, deviationId} = item.deviation
+    /**
+     * 通过页面的 __INITIAL_STATE__ 获得下载链接
+     * @param doc
+     */
+    const getLinkFromScript = (doc: HTMLElement): string => {
+        const json = getInitialState(doc)
+        return json['@@entities'].deviationExtended[deviationId].download.url
     }
     // console.log('getDownloadLink called')
-    const {isDownloadable, url} = item.deviation
+
     const doc = await getHTML(url)
     try {
         if (isDownloadable) {
@@ -140,7 +334,7 @@ export const getDownloadLink = async (item: Deviation): Promise<string> => {
         }
         else {
             // const selector = 'link[href^="https://images-wixmp-"][rel="preload"]'
-            const selector = item.deviation.isVideo?'video[src^="https://wixmp-"]':'img[src^="https://images-wixmp-"]'
+            const selector = item.deviation.isVideo ? 'video[src^="https://wixmp-"]' : 'img[src^="https://images-wixmp-"]'
             const link = doc.querySelector(selector) as HTMLImageElement | HTMLVideoElement
             return link.src
         }
@@ -159,20 +353,6 @@ export const getDownloadFileType = (link: string) => {
 interface SendMessageItem {
     [propName: string]: any;
 }
-
-// export const sendMessagePromise = (item: SendMessageItem): Promise<void> => {
-//     return new Promise((resolve, reject) => {
-//         chrome.runtime.sendMessage(chrome.runtime.id, item, response => {
-//             console.log('response', response)
-//             if (response.complete) {
-//                 resolve()
-//             }
-//             else {
-//                 reject('download failed')
-//             }
-//         });
-//     });
-// }
 
 export const sendMessageToTab = (type: string, data?: any) => {
     chrome.tabs.query({currentWindow: true, active: true}, (tabs) => {

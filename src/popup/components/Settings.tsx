@@ -4,7 +4,7 @@ import {DownOutlined, InfoOutlined} from '@ant-design/icons';
 import {CheckboxChangeEvent} from 'antd/lib/checkbox/Checkbox';
 import {MenuInfo} from "rc-menu/lib/interface";
 
-import {ConflictAction, SettingsAction, settingsReducer, SettingsState} from '../reducers/settingsReducer'
+import {ConflictAction, settingsReducer, SettingsState, LiteratureDownloadType} from '../reducers/settingsReducer'
 import {date, validateFilename as validateFilenameUtil} from "../../common/js/utils";
 
 const {Option} = Select
@@ -15,7 +15,8 @@ const settingsState: SettingsState = {
     endTime: '',
     filename: '',
     conflictAction: 'uniquify',
-    autoRenameIfHasError: true
+    autoRenameIfHasError: true,
+    literatureDownloadType: 'txt'
 }
 
 const VARIABLES = [
@@ -38,7 +39,8 @@ const Settings: FC = () => {
             endTime,
             filename,
             conflictAction,
-            autoRenameIfHasError
+            autoRenameIfHasError,
+            literatureDownloadType
         },
         dispatch
     ] = useReducer(settingsReducer, settingsState)
@@ -109,6 +111,13 @@ const Settings: FC = () => {
         dispatch({
             type: 'setSettings',
             conflictAction: value
+        })
+    }
+    // LiteratureDownloadType 下拉框改变
+    const handleLiteratureDownloadTypeChange = (value: LiteratureDownloadType) => {
+        dispatch({
+            type: 'setSettings',
+            literatureDownloadType: value
         })
     }
     // filename 输入框修改
@@ -327,6 +336,18 @@ const Settings: FC = () => {
                         counter</Option>
                     <Option value='overwrite' className='settings-conflictAction-option'>overwrite the existing
                         file</Option>
+                </Select>
+            </div>
+            <div className='settings-group settings-literatureDownloadType'>
+                <span>literature download filetype</span>
+                <Select<LiteratureDownloadType>
+                    value={literatureDownloadType}
+                    onChange={handleLiteratureDownloadTypeChange}
+                    className='settings-literatureDownloadType-select'
+                    size='small'
+                >
+                    <Option value='txt' className='settings-literatureDownloadType-option'>txt</Option>
+                    <Option value='md' className='settings-literatureDownloadType-option'>markdown</Option>
                 </Select>
             </div>
             <div className='settings-group settings-autoRenameIfHasError'>

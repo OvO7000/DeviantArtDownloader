@@ -3,23 +3,22 @@ import classnames from 'classnames'
 import MessageSender = chrome.runtime.MessageSender
 import {
     _chrome,
-    getPageType,
+    getCsrfToken,
     mapLimit,
     getDownloadLink,
     date,
     getDownloadFileType,
     validateFilename as validateFilenameUtil,
-    INVALID_DEVICE_NAMES
+    getLiterature
 } from '../../common/js/utils'
-import {getFolders, getDeviations} from '../../common/js/apis'
+import {getDeviations, watch, unwatch, Folder, Deviation} from '../../common/js/apis'
 import MapLimit from '../../common/js/MapLimit'
 import RequestLimit from '../../common/js/RequestLimit'
 import {panelReducer, PanelState} from "../reducers/panelReducer"
 import {dataReducer, DataState, SimpleFolder} from "../reducers/dataReducer"
+import {SettingsState, LiteratureDownloadType} from "../../popup/reducers/settingsReducer"
 
 import Progress from './Progress'
-import {ConflictAction} from "../../popup/reducers/settingsReducer";
-import {Folder, Deviation} from "../../common/js/apis";
 
 const initialDataState: DataState = {
     username: '',
@@ -27,15 +26,9 @@ const initialDataState: DataState = {
     folders: [],
     // 通过 api 获取的 deviations 列表
     deviations: [],
-    settings: {
-        downloadDownloadable: false,
-        startTime: '',
-        endTime: '',
-        filename: '',
-        conflictAction: 'uniquify',
-        autoRenameIfHasError: true
-    }
 }
+let settings: SettingsState
+
 const initialPanelState: PanelState = {
     show: false,
     download: false,
@@ -97,7 +90,25 @@ const Panel: FC = () => {
             }
             return true
         }
-
+        const getSettings = async (): Promise<SettingsState> => {
+            const defaultSetting: SettingsState =  {
+                downloadDownloadable: false,
+                startTime: '',
+                endTime: '',
+                filename: '',
+                conflictAction: 'uniquify',
+                autoRenameIfHasError: true,
+                literatureDownloadType: 'txt'
+            }
+            let {settings} = await chrome.storage.sync.get(['settings'])
+            if (settings) {
+                settings = Object.assign({}, defaultSetting, settings)
+            }
+            else {
+                settings = Object.assign({}, defaultSetting)
+            }
+            return settings
+        }
         // 抓取、下载作品
         if (message.type === 'download') {
             const {galleries, favourites, username} = message.data
@@ -146,16 +157,8 @@ const Panel: FC = () => {
                     show: true
                 }
             })
-
-            let {settings} = await chrome.storage.sync.get(['settings'])
-            if (settings) {
-                dispatchData({
-                    type: 'setSettings',
-                    data: settings
-                })
-            } else {
-                settings = stateData.settings
-            }
+            // 获取 settings
+            settings = await getSettings()
 
             // 抓取作品列表
             const limit = 3
@@ -260,8 +263,10 @@ const Panel: FC = () => {
         }
 
         const errors: IError[] = []
-        const {username, settings} = stateData
-        const getFilename = (filename: string, fileType: string, autoRenameIfHasError: boolean, deviation: DeviationInfo) => {
+        const {username} = stateData
+        let csrfToken: string = ''
+        const authorsNeedWatch: string[] = []
+        const getFilename = (filename: string, fileType: string, autoRenameIfHasError: boolean, deviation: DeviationInfo): [string, boolean] => {
             filename = filename || '/deviantArtDownloader/{user}/{folderType}/{folder}/{deviation}'
             if (deviation.isSubFolder) {
                 filename = filename
@@ -394,6 +399,24 @@ const Panel: FC = () => {
                 }
             }
         })
+        dispatchPanel({
+            type: 'setPanel',
+            data: {
+                status: 'downloading',
+                current: '',
+                progress: 0,
+                group: {
+                    title: '',
+                    current: 0,
+                    total: 0
+                },
+                subGroup: {
+                    title: 'Folders',
+                    current: 0,
+                    total: stateData.deviations.length
+                }
+            }
+        })
 
         // 下载 folders
         folderMapLimit = new MapLimit(stateData.deviations, 1)
@@ -413,38 +436,76 @@ const Panel: FC = () => {
             const time = deviations.length > 100 ? 2000 : 500
             deviationRequestLimit = new RequestLimit(deviations, time)
             await deviationRequestLimit.execute(async (deviation: Deviation) => {
+                const {type, isDownloadable, premiumFolderData, author, title, deviationId, publishedTime} = deviation.deviation
+
                 // 设置 current
                 dispatchPanel({
                     type: 'setPanel',
                     data: {
-                        current: deviation.deviation.title
+                        current: title
                     }
                 })
                 try {
-                    // 没有下载按钮的 deviation 不下载
-                    if (settings.downloadDownloadable && !deviation.deviation.isDownloadable) return
 
-                    // 获取下载链接
-                    const link = await getDownloadLink(deviation)
-                    // console.log('link', link)
-                    const fileType = getDownloadFileType(link!) as string
-                    // console.log('fileType', fileType)
-                    // 生成 filename
+                    // 没有下载按钮的 deviation 不下载
+                    if (settings.downloadDownloadable && !isDownloadable) return
+
+                    // 处理需要 watch 才能浏览的 deviation
+                    if (premiumFolderData) {
+                        const {username} = author
+                        const {hasAccess, type} = premiumFolderData
+                        if (!hasAccess && type === 'watchers' && !authorsNeedWatch.includes(username)) {
+                            if (!csrfToken) csrfToken = getCsrfToken(document.documentElement)
+                            await watch(username, csrfToken)
+                            authorsNeedWatch.push(username)
+                        }
+                    }
+
+                    if (type !== 'literature' && type !== 'image' && type !== 'film') {
+                        errors.push({
+                            username,
+                            author: author.username,
+                            folderType,
+                            folderName,
+                            deviation: title,
+                            deviationId: deviationId,
+                            error: `don not support type ${type}`
+                        })
+                        return
+                    }
+
+                    let fileType: string = ''
+                    let link: string = ''
+
+                    if (type === 'literature') {
+                        fileType = settings.literatureDownloadType
+                        const text = await getLiterature(deviation, fileType as LiteratureDownloadType)
+                        const blob = new Blob([text],{type: fileType === 'txt' ? 'text/plain' : 'text/markdown;charset=utf-8'})
+                        link = window.URL.createObjectURL(blob)
+                    }
+                    else if (type === 'image' || type === 'film') {
+                        // 获取下载链接
+                        link = await getDownloadLink(deviation)
+                        // console.log('link', link)
+                        fileType = getDownloadFileType(link!) as string
+                        // console.log('fileType', fileType)
+                        // 生成 filename
+                    }
                     const deviationInfo: DeviationInfo = {
                         username,
-                        author: deviation.deviation.author.username,
+                        author: author.username,
                         folderName,
                         folderType,
                         isSubFolder,
                         parentFolderName,
-                        deviationId: deviation.deviation.deviationId,
-                        title: deviation.deviation.title,
-                        publishedDate: deviation.deviation.publishedTime.slice(0, 10),
-                        isDownloadable: deviation.deviation.isDownloadable
+                        deviationId: deviationId,
+                        title,
+                        publishedDate: publishedTime.slice(0, 10),
+                        isDownloadable
                     }
-
                     const [filename, filenameIsValidate] = getFilename(settings.filename, fileType, settings.autoRenameIfHasError, deviationInfo)
                     if (!filenameIsValidate) return
+
                     await _chrome.sendMessageP({
                         type: 'download',
                         url: link,
@@ -453,22 +514,24 @@ const Panel: FC = () => {
                     }).catch((error) => {
                         errors.push({
                             username,
-                            author: deviation.deviation.author.username,
+                            author: author.username,
                             folderType,
                             folderName,
-                            deviation: deviation.deviation.title,
-                            deviationId: deviation.deviation.deviationId,
+                            deviation: title,
+                            deviationId,
                             error
                         })
                     })
+
+
                 } catch (error: any) {
                     errors.push({
                         username,
-                        author: deviation.deviation.author.username,
+                        author: author.username,
                         folderType,
                         folderName,
-                        deviation: deviation.deviation.title,
-                        deviationId: deviation.deviation.deviationId,
+                        deviation: title,
+                        deviationId: deviationId,
                         error
                     })
                 }
@@ -502,6 +565,12 @@ const Panel: FC = () => {
                 },
             })
         })
+        // 取消关注为了下载扩展自动关注的作者，也就是 authorsNeedWatch 内的作者
+        if (authorsNeedWatch.length) {
+            for (let author of authorsNeedWatch) {
+                await unwatch(author, csrfToken)
+            }
+        }
 
         // 下载结果文件
         let error_text: string = errors.map((err, index) => {

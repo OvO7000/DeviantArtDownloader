@@ -15,7 +15,7 @@ export interface DataState {
     username: string,
     folders: Folder[],
     deviations: SimpleFolder[],
-    settings: SettingsState,
+    // settings: SettingsState,
 }
 
 export type DataAction = {
@@ -38,10 +38,10 @@ export type DataAction = {
         };
         type: 'setDeviation'
     } |
-    {
-        data: SettingsState;
-        type: 'setSettings'
-    } |
+    // {
+    //     data: SettingsState;
+    //     type: 'setSettings'
+    // } |
     {
         type: 'clear'
     };
@@ -72,24 +72,25 @@ export const dataReducer = (state: DataState, action: DataAction) => {
         return _state
     }
     // 设置 settings
-    else if (action.type === 'setSettings') {
-        const _state = _.cloneDeep(state)
-        _state.settings = action.data
-        return _state
-    }
+    // else if (action.type === 'setSettings') {
+    //     const _state = _.cloneDeep(state)
+    //     _state.settings = action.data
+    //     return _state
+    // }
     else if (action.type === 'clear') {
         const _state: DataState = {
             username: '',
             folders: [],
             deviations: [],
-            settings: {
-                downloadDownloadable: false,
-                startTime: '',
-                endTime: '',
-                filename: '',
-                conflictAction: 'uniquify',
-                autoRenameIfHasError: true
-            }
+            // settings: {
+            //     downloadDownloadable: false,
+            //     startTime: '',
+            //     endTime: '',
+            //     filename: '',
+            //     conflictAction: 'uniquify',
+            //     autoRenameIfHasError: true,
+            //     literatureDownloadType: 'txt'
+            // }
         }
         return _state
     }

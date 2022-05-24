@@ -1,4 +1,5 @@
 import axios, {AxiosResponse} from 'axios'
+import {getCsrfToken} from "./utils";
 
 
 export type FolderType = 'gallery' | 'collection'
@@ -24,23 +25,18 @@ export interface Deviation {
         publishedTime: string,
         author: {
             username: string
+        },
+        type: 'literature' | 'image' | 'film',
+        legacyTextEditUrl: string | null,
+        premiumFolderData: {
+            galleryId: number,
+            galleryUrl: string,
+            hasAccess: boolean,
+            type: string
         }
     }
 }
 
-// interface FolderResponse {
-//     sectionData: {
-//         modules: {
-//             moduleData: {
-//                 folders: {
-//                     hasMore: boolean,
-//                     nextOffset: number | null,
-//                     results: Folder[]
-//                 }
-//             }
-//         }[]
-//     }
-// }
 interface FolderResponse {
     hasMore: boolean,
     nextOffset: number | null,
@@ -121,7 +117,10 @@ export const getDeviations = async (username: string, type: FolderType, folderId
     await fun()
     return list
 }
-
+/**
+ * 获取 HTML 页面
+ * @param url
+ */
 export const getHTML = async (url: string)=>{
     // console.log('getHTML called', url)
     const result:AxiosResponse<HTMLElement> = await axios({
@@ -132,3 +131,36 @@ export const getHTML = async (url: string)=>{
     return result.data
 }
 
+interface MyWindow extends Window {
+    __CSRF_TOKEN__: string;
+}
+
+declare var window: MyWindow;
+
+
+export const watch = async(username: string, csrfToken?: string)=>{
+    console.log('watch called')
+    if (!csrfToken) csrfToken = getCsrfToken(document.documentElement)
+    const result:AxiosResponse<any> = await axios({
+        method: 'post',
+        url: 'https://www.deviantart.com/_napi/shared_api/watch',
+        data: {
+            username,
+            csrf_token: csrfToken
+        }
+    })
+    return result
+}
+export const unwatch = async(username: string, csrfToken?: string)=>{
+    console.log('unwatch called')
+    if (!csrfToken) csrfToken = getCsrfToken(document.documentElement)
+    const result:AxiosResponse<any> = await axios({
+        method: 'post',
+        url: 'https://www.deviantart.com/_napi/shared_api/unwatch',
+        data: {
+            username,
+            csrf_token: csrfToken
+        }
+    })
+    return result
+}
